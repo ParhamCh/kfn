@@ -6,6 +6,28 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-08
+
+### Added
+- **M3 manifest generator** — the `kfn` CLI:
+  - `kfn render -f function.yaml [-o out.yaml] [-n namespace]` turns a function's
+    `function.yaml` into a Deployment + Service (no client-go; plain templated YAML).
+  - `kfn apply -f function.yaml [-n namespace]` renders and applies via `kubectl`,
+    creating the target namespace if missing.
+  - `kfn version`.
+  - Generated Deployment: one per function, pinned to `role=workload` nodes, resource
+    requests/limits, `/healthz`+`/readyz` probes, injected `FUNCTION_NAME`, non-root /
+    read-only-rootfs container, `terminationGracePeriodSeconds` aligned to the drain
+    window. Defaults: namespace `kfn`, port `8080`, replicas `1`. **No HPA** (the user
+    runs their own autoscaler). ServiceMonitor deferred to M5.
+- New dependency: `gopkg.in/yaml.v3` (parsing only).
+
+### Changed
+- Routing: the function now receives **all HTTP methods** on any path (previously only
+  `POST`; other methods returned `405`). It sees `req.Method` and decides.
+- `/healthz` and `/readyz` are now **reserved for the runtime across all methods** (not
+  just `GET`), so a request can no longer fall through to the function on those paths.
+
 ## [0.2.0] - 2026-06-08
 
 ### Added
@@ -41,6 +63,7 @@ All notable changes to this project are documented here. The format is based on
 - Structured JSON access logging (one line per invocation).
 - `examples/hello` reference function and accompanying `function.yaml`.
 
-[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/ParhamCh/kfn/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ParhamCh/kfn/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ParhamCh/kfn/releases/tag/v0.1.0
