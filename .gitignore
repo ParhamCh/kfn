@@ -1,9 +1,9 @@
 # Binaries and build output
+# (build into ./bin via `go build -o bin/`; do not drop binaries in package dirs)
 /bin/
 /dist/
 *.exe
 *.out
-hello
 
 # Test & coverage artifacts
 *.test
