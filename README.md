@@ -1,4 +1,4 @@
-# loadgen-go
+# kfn
 
 A lightweight **function runtime** for Kubernetes: import the runtime, register one
 handler, and your function becomes a hardened, long-lived HTTP service ready to run as
@@ -15,7 +15,7 @@ package main
 import (
 	"context"
 
-	"github.com/ParhamCh/loadgen-go/pkg/runtime"
+	"github.com/ParhamCh/kfn/pkg/runtime"
 )
 
 func main() {
