@@ -1,0 +1,16 @@
+# Function metadata consumed by `loadgen render`/`loadgen apply` (added in M3).
+# Documented here in M1 so the example is complete; the generator is not built yet.
+name: hello
+image: registry.example.com/hello:v0.1.0
+port: 8080
+replicas: 2
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 128Mi
+env:
+  - name: LOG_LEVEL
+    value: info
