@@ -1,0 +1,21 @@
+# Binaries and build output
+/bin/
+/dist/
+*.exe
+*.out
+hello
+
+# Test & coverage artifacts
+*.test
+coverage.out
+coverage.html
+
+# Go workspace files
+go.work
+go.work.sum
+
+# Editor / OS noise
+.idea/
+.vscode/
+*.swp
+.DS_Store
