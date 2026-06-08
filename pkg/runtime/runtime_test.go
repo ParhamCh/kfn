@@ -94,6 +94,36 @@ func TestHealthProbes(t *testing.T) {
 	}
 }
 
+func TestFunctionReceivesAllMethods(t *testing.T) {
+	mux := testMux(func(_ context.Context, req *Request) (*Response, error) {
+		return Text(http.StatusOK, "fn:"+req.Method), nil
+	})
+	for _, m := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete} {
+		resp := do(t, mux, m, "/", nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("%s / = %d, want 200 (function should handle any method)", m, resp.StatusCode)
+		}
+		b, _ := io.ReadAll(resp.Body)
+		if got, want := string(b), "fn:"+m; got != want {
+			t.Errorf("%s / body = %q, want %q", m, got, want)
+		}
+	}
+}
+
+func TestProbesReservedFromFunction(t *testing.T) {
+	mux := testMux(func(_ context.Context, _ *Request) (*Response, error) {
+		return Text(http.StatusOK, "function"), nil
+	})
+	// Even non-GET verbs on the probe paths must hit the runtime, not the function.
+	for _, p := range []string{"/healthz", "/readyz"} {
+		resp := do(t, mux, http.MethodPost, p, nil)
+		b, _ := io.ReadAll(resp.Body)
+		if string(b) == "function" {
+			t.Errorf("POST %s reached the function; the probe path must be reserved", p)
+		}
+	}
+}
+
 func TestReadinessReflectsState(t *testing.T) {
 	hc := &health{}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))

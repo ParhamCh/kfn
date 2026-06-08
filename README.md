@@ -35,11 +35,11 @@ graceful shutdown. You only write the handler.
 
 ## HTTP surface
 
-| Route          | Purpose                                            |
-|----------------|----------------------------------------------------|
-| `POST /`       | Invoke the function                                |
-| `GET /healthz` | Liveness probe                                     |
-| `GET /readyz`  | Readiness probe (flips to 503 while draining)      |
+| Route                | Purpose                                                  |
+|----------------------|----------------------------------------------------------|
+| `/healthz`           | Liveness probe (reserved; any method)                    |
+| `/readyz`            | Readiness probe (reserved; flips to 503 while draining)  |
+| any other path/method| Invoke the function — it receives the method, path, query, headers and body |
 
 A returned `error` becomes `500` (message hidden); return `runtime.Errorf(status, ...)`
 to control the status and client-visible message. A `nil` response is `204 No Content`.

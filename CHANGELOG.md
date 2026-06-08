@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+- Routing: the function now receives **all HTTP methods** on any path (previously only
+  `POST`; other methods returned `405`). It sees `req.Method` and decides.
+- `/healthz` and `/readyz` are now **reserved for the runtime across all methods** (not
+  just `GET`), so a request can no longer fall through to the function on those paths.
+
 ## [0.2.0] - 2026-06-08
 
 ### Added
