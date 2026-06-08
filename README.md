@@ -4,8 +4,8 @@ A lightweight **function runtime** for Kubernetes: import the runtime, register 
 handler, and your function becomes a hardened, long-lived HTTP service ready to run as
 a pod. A companion CLI (coming in M3) generates the Kubernetes manifests to deploy it.
 
-> Status: **M2 — operational hardening** complete (timeouts, panic recovery,
-> concurrency limiting, graceful drain). See [`DESIGN.md`](DESIGN.md) for the full
+> Status: **M3 — manifest generator** complete (`kfn render`/`apply`). The runtime
+> (M1–M2) and the deploy CLI are in place. See [`DESIGN.md`](DESIGN.md) for the full
 > design and milestone plan.
 
 ## The contract
@@ -74,6 +74,45 @@ curl http://localhost:8080/healthz                 # ok
 go test ./...
 go vet ./...
 ```
+
+## Deploying to Kubernetes — the `kfn` CLI
+
+Each function is its **own Deployment**, scaled independently. The `kfn` CLI turns a
+`function.yaml` into a Deployment + Service and applies it.
+
+```bash
+go build -o bin/kfn ./cmd/kfn
+
+# Inspect the generated manifests
+bin/kfn render -f examples/hello/function.yaml          # → stdout
+bin/kfn render -f examples/hello/function.yaml -o out.yaml
+
+# Apply to the cluster (creates the target namespace if missing)
+bin/kfn apply -f examples/hello/function.yaml
+bin/kfn apply -f examples/hello/function.yaml -n staging # override namespace
+```
+
+`function.yaml` (only `name` and `image` are required; everything else is defaulted):
+
+```yaml
+name: hello
+image: harbor.example.com/kfn/hello:0.1.0
+port: 8080            # default 8080
+replicas: 2           # default 1
+# namespace: kfn               (default)
+# nodeSelector: {role: workload} (default — pins to workload nodes)
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits:   { cpu: 250m, memory: 128Mi }
+env:
+  - { name: LOG_LEVEL, value: info }
+```
+
+The generated Deployment wires the runtime's `/healthz`/`/readyz` probes, injects
+`FUNCTION_NAME`, pins to `role=workload` nodes, sets resource requests, and runs as a
+non-root, read-only-rootfs container. **No HorizontalPodAutoscaler is created** — scale
+with `kubectl scale deploy/<name> -n kfn --replicas=N` (or your own autoscaler).
+A `ServiceMonitor` for Prometheus arrives in M5 with `/metrics`.
 
 ## Contributing & releases
 
