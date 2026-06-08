@@ -1,4 +1,4 @@
-# Function metadata consumed by `loadgen render`/`loadgen apply` (added in M3).
+# Function metadata consumed by `kfn render`/`kfn apply` (added in M3).
 # Documented here in M1 so the example is complete; the generator is not built yet.
 name: hello
 image: registry.example.com/hello:v0.1.0

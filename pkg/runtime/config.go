@@ -3,6 +3,7 @@ package runtime
 import (
 	"log/slog"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -10,16 +11,32 @@ import (
 // needed to serve and shut down cleanly; per-invocation timeouts, concurrency limits
 // and metrics are introduced in later milestones (see DESIGN.md §3).
 type config struct {
+	// Name identifies the function. It is attached to every log line (and, from M5,
+	// every metric as the `function` label) so a per-function autoscaler can query
+	// signals scoped to a single function. The manifest generator injects it as
+	// FUNCTION_NAME from the function's name; locally it may be left unset.
+	Name          string
 	Port          string
 	ShutdownGrace time.Duration
 	LogLevel      slog.Level
+
+	// InvokeTimeout bounds how long a single invocation may run before the runtime
+	// gives up and returns 504. 0 disables the timeout.
+	InvokeTimeout time.Duration
+	// MaxConcurrency caps simultaneous in-flight invocations per pod; excess requests
+	// get 429 immediately. 0 means unlimited. The 429 rate is a saturation signal a
+	// per-function autoscaler can scale on.
+	MaxConcurrency int
 }
 
 func loadConfig() config {
 	return config{
-		Port:          envString("PORT", "8080"),
-		ShutdownGrace: envDuration("SHUTDOWN_GRACE", 15*time.Second),
-		LogLevel:      envLevel("LOG_LEVEL", slog.LevelInfo),
+		Name:           envString("FUNCTION_NAME", ""),
+		Port:           envString("PORT", "8080"),
+		ShutdownGrace:  envDuration("SHUTDOWN_GRACE", 15*time.Second),
+		LogLevel:       envLevel("LOG_LEVEL", slog.LevelInfo),
+		InvokeTimeout:  envDuration("INVOKE_TIMEOUT", 30*time.Second),
+		MaxConcurrency: envInt("MAX_CONCURRENCY", 0),
 	}
 }
 
@@ -56,4 +73,18 @@ func envLevel(key string, def slog.Level) slog.Level {
 		return def
 	}
 	return lvl
+}
+
+func envInt(key string, def int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		slog.Warn("invalid int env var, using default",
+			"key", key, "value", v, "default", def)
+		return def
+	}
+	return n
 }
