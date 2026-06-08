@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-08
+
 ### Added
 - **M2 operational hardening** (`pkg/runtime`):
   - Per-invocation timeout (`INVOKE_TIMEOUT`, default `30s`): a slow handler is
@@ -39,5 +41,6 @@ All notable changes to this project are documented here. The format is based on
 - Structured JSON access logging (one line per invocation).
 - `examples/hello` reference function and accompanying `function.yaml`.
 
-[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ParhamCh/kfn/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ParhamCh/kfn/releases/tag/v0.1.0
