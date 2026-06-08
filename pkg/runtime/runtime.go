@@ -38,11 +38,20 @@ func Start(h Handler) {
 		os.Exit(1)
 	}
 
+	// Bound and protect each invocation. Order matters: recover must run inside the
+	// goroutine withTimeout spawns, so it is the inner wrapper.
+	h = withTimeout(cfg.InvokeTimeout, withRecover(logger, h))
+
 	hc := &health{}
 	srv := &http.Server{
-		Addr:              ":" + cfg.Port,
-		Handler:           newMux(h, hc, logger),
+		Addr:    ":" + cfg.Port,
+		Handler: newMux(h, hc, cfg, logger),
+		// WriteTimeout is intentionally unset: response timing is governed by
+		// INVOKE_TIMEOUT in the handler path, so a hard WriteTimeout below it would
+		// truncate legitimately slow responses. ReadTimeout guards slow request reads
+		// (body size is separately capped at maxBodyBytes).
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
 
@@ -73,12 +82,17 @@ func run(srv *http.Server, hc *health, cfg config, logger *slog.Logger) error {
 		logger.Info("shutdown signal received, draining", "grace", cfg.ShutdownGrace)
 	}
 
-	// Stop advertising readiness so the load balancer drains us, then give in-flight
-	// requests up to the grace period to complete.
+	return drain(srv, hc, cfg.ShutdownGrace, logger)
+}
+
+// drain performs a readiness-gated graceful shutdown: it stops advertising readiness
+// so Kubernetes removes the pod from Service endpoints, then waits up to grace for
+// in-flight requests to finish before closing the server.
+func drain(srv *http.Server, hc *health, grace time.Duration, logger *slog.Logger) error {
 	hc.setReady(false)
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownGrace)
+	ctx, cancel := context.WithTimeout(context.Background(), grace)
 	defer cancel()
-	if err := srv.Shutdown(shutdownCtx); err != nil {
+	if err := srv.Shutdown(ctx); err != nil {
 		return err
 	}
 	logger.Info("shutdown complete")
@@ -86,12 +100,14 @@ func run(srv *http.Server, hc *health, cfg config, logger *slog.Logger) error {
 }
 
 // newMux wires the invocation route (POST /) and the health probes. Go's ServeMux
-// resolves the more specific health patterns ahead of the catch-all POST /.
-func newMux(h Handler, hc *health, logger *slog.Logger) http.Handler {
+// resolves the more specific health patterns ahead of the catch-all POST /. The
+// invocation chain is logging → concurrency limit → invoke, so shed (429) requests
+// are still logged.
+func newMux(h Handler, hc *health, cfg config, logger *slog.Logger) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", hc.liveness)
 	mux.HandleFunc("GET /readyz", hc.readiness)
-	mux.Handle("POST /", logging(logger, invoke(h, logger)))
+	mux.Handle("POST /", logging(logger, limitConcurrency(cfg.MaxConcurrency, invoke(h, logger))))
 	return mux
 }
 

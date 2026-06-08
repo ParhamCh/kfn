@@ -14,7 +14,7 @@ func testMux(h Handler) http.Handler {
 	hc := &health{}
 	hc.setReady(true)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	return newMux(h, hc, logger)
+	return newMux(h, hc, config{}, logger)
 }
 
 func do(t *testing.T, mux http.Handler, method, target string, body io.Reader) *http.Response {
@@ -99,7 +99,7 @@ func TestReadinessReflectsState(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mux := newMux(func(_ context.Context, _ *Request) (*Response, error) {
 		return Text(http.StatusOK, "ok"), nil
-	}, hc, logger)
+	}, hc, config{}, logger)
 
 	// Not ready until set.
 	if resp := do(t, mux, http.MethodGet, "/readyz", nil); resp.StatusCode != http.StatusServiceUnavailable {

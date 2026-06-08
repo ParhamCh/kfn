@@ -7,9 +7,23 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **M2 operational hardening** (`pkg/runtime`):
+  - Per-invocation timeout (`INVOKE_TIMEOUT`, default `30s`): a slow handler is
+    abandoned with `504` and its context cancelled. `0` disables.
+  - Panic recovery: a handler panic is caught, logged with its stack, and returned as a
+    masked `500`; the process keeps serving.
+  - Per-pod concurrency limit (`MAX_CONCURRENCY`, default `0` = unlimited): excess
+    in-flight requests are shed immediately with `429` — a saturation signal a
+    per-function autoscaler can scale on.
 - Per-function identity: `FUNCTION_NAME` is read from the environment and attached as
   a `function` attribute on every log line, so per-function workloads are attributable
   in logs (and, from M5, metrics). Foundation for independent per-function autoscaling.
+
+### Changed
+- Renamed the project `loadgen-go` → `kfn`; the Go module path is now
+  `github.com/ParhamCh/kfn` (**breaking** for importers).
+- HTTP server now sets `ReadTimeout`; `WriteTimeout` is intentionally left unset so
+  `INVOKE_TIMEOUT` governs response timing.
 
 ## [0.1.0] - 2026-06-08
 
