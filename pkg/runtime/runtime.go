@@ -99,15 +99,18 @@ func drain(srv *http.Server, hc *health, grace time.Duration, logger *slog.Logge
 	return nil
 }
 
-// newMux wires the invocation route (POST /) and the health probes. Go's ServeMux
-// resolves the more specific health patterns ahead of the catch-all POST /. The
-// invocation chain is logging → concurrency limit → invoke, so shed (429) requests
-// are still logged.
+// newMux reserves the probe paths for the runtime and forwards everything else to the
+// function. /healthz and /readyz are registered without a method, so the runtime owns
+// them for any verb; the catch-all "/" then receives every other path and method,
+// letting the function handle GET, POST, PUT, … itself (it sees req.Method). Go's
+// ServeMux resolves the more specific probe patterns ahead of "/". The invocation
+// chain is logging → concurrency limit → invoke, so shed (429) requests are still
+// logged.
 func newMux(h Handler, hc *health, cfg config, logger *slog.Logger) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", hc.liveness)
-	mux.HandleFunc("GET /readyz", hc.readiness)
-	mux.Handle("POST /", logging(logger, limitConcurrency(cfg.MaxConcurrency, invoke(h, logger))))
+	mux.HandleFunc("/healthz", hc.liveness)
+	mux.HandleFunc("/readyz", hc.readiness)
+	mux.Handle("/", logging(logger, limitConcurrency(cfg.MaxConcurrency, invoke(h, logger))))
 	return mux
 }
 
