@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-06-08
+
 ### Added
 - **Runtime core** (`pkg/runtime`): `runtime.Start` wraps a single user handler as a
   long-lived HTTP service.
@@ -17,3 +19,6 @@ All notable changes to this project are documented here. The format is based on
   requests within the grace window.
 - Structured JSON access logging (one line per invocation).
 - `examples/hello` reference function and accompanying `function.yaml`.
+
+[Unreleased]: https://github.com/ParhamCh/loadgen-go/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/ParhamCh/loadgen-go/releases/tag/v0.1.0
