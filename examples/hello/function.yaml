@@ -1,7 +1,8 @@
-# Function metadata consumed by `kfn render`/`kfn apply` (added in M3).
-# Documented here in M1 so the example is complete; the generator is not built yet.
+# Function metadata consumed by `kfn render` / `kfn apply`.
+# Unset fields are defaulted: namespace=kfn, nodeSelector role=workload, port=8080,
+# replicas=1, resources (50m/64Mi requests, 250m/128Mi limits), shutdownGrace=15s.
 name: hello
-image: registry.example.com/hello:v0.1.0
+image: harbor.example.com/kfn/hello:0.1.0  # replace with your Harbor image (built in M4)
 port: 8080
 replicas: 2
 resources:

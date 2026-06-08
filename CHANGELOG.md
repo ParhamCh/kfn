@@ -6,6 +6,20 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- **M3 manifest generator** — the `kfn` CLI:
+  - `kfn render -f function.yaml [-o out.yaml] [-n namespace]` turns a function's
+    `function.yaml` into a Deployment + Service (no client-go; plain templated YAML).
+  - `kfn apply -f function.yaml [-n namespace]` renders and applies via `kubectl`,
+    creating the target namespace if missing.
+  - `kfn version`.
+  - Generated Deployment: one per function, pinned to `role=workload` nodes, resource
+    requests/limits, `/healthz`+`/readyz` probes, injected `FUNCTION_NAME`, non-root /
+    read-only-rootfs container, `terminationGracePeriodSeconds` aligned to the drain
+    window. Defaults: namespace `kfn`, port `8080`, replicas `1`. **No HPA** (the user
+    runs their own autoscaler). ServiceMonitor deferred to M5.
+- New dependency: `gopkg.in/yaml.v3` (parsing only).
+
 ### Changed
 - Routing: the function now receives **all HTTP methods** on any path (previously only
   `POST`; other methods returned `405`). It sees `req.Method` and decides.
