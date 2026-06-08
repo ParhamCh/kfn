@@ -25,5 +25,5 @@ All notable changes to this project are documented here. The format is based on
 - Structured JSON access logging (one line per invocation).
 - `examples/hello` reference function and accompanying `function.yaml`.
 
-[Unreleased]: https://github.com/ParhamCh/loadgen-go/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/ParhamCh/loadgen-go/releases/tag/v0.1.0
+[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/ParhamCh/kfn/releases/tag/v0.1.0

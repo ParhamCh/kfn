@@ -1,3 +1,3 @@
-module github.com/ParhamCh/loadgen-go
+module github.com/ParhamCh/kfn
 
 go 1.26

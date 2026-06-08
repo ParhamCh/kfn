@@ -1,4 +1,4 @@
-# loadgen-go — FaaS Function Runtime: Design
+# kfn — FaaS Function Runtime: Design
 
 ## 1. Goal & scope
 
@@ -34,7 +34,7 @@ package main
 
 import (
     "context"
-    "github.com/parham/loadgen-go/pkg/runtime"
+    "github.com/ParhamCh/kfn/pkg/runtime"
 )
 
 func main() {
@@ -90,7 +90,7 @@ stops routing new traffic while we finish in-flight requests.
 
 ## 4. Manifest generation
 
-A small CLI (`cmd/loadgen`) takes function metadata and renders manifests. Metadata
+A small CLI (`cmd/kfn`) takes function metadata and renders manifests. Metadata
 source: flags and/or a `function.yaml` in the function repo.
 
 ```yaml
@@ -107,9 +107,9 @@ env:
 ```
 
 ```
-loadgen render -f function.yaml            # print Deployment+Service YAML to stdout
-loadgen render -f function.yaml -o out.yaml
-loadgen apply  -f function.yaml            # render then `kubectl apply -f -`
+kfn render -f function.yaml            # print Deployment+Service YAML to stdout
+kfn render -f function.yaml -o out.yaml
+kfn apply  -f function.yaml            # render then `kubectl apply -f -`
 ```
 
 Generated objects:
@@ -133,7 +133,7 @@ same Dockerfile works for any function.
 ## 6. Proposed layout
 
 ```
-loadgen-go/
+kfn/
 ├── go.mod
 ├── DESIGN.md
 ├── pkg/
@@ -143,7 +143,7 @@ loadgen-go/
 │       ├── middleware.go   # recovery, timeout, concurrency, logging
 │       └── health.go       # liveness/readiness state + graceful shutdown
 ├── cmd/
-│   └── loadgen/
+│   └── kfn/
 │       ├── main.go         # CLI: render / apply
 │       └── render.go       # function.yaml → manifest templates
 ├── internal/
@@ -164,15 +164,15 @@ loadgen-go/
    logging. Outcome: `examples/hello` runs locally, `curl localhost:8080` works.
 2. **M2 — Operational hardening.** Timeouts, panic recovery, concurrency limit,
    readiness-gated graceful shutdown. Outcome: SIGTERM drains cleanly; tests cover it.
-3. **M3 — Manifest generator.** `internal/manifest` + `cmd/loadgen render`. Outcome:
+3. **M3 — Manifest generator.** `internal/manifest` + `cmd/kfn render`. Outcome:
    `function.yaml` → valid Deployment+Service YAML (validated with `kubectl --dry-run`).
-4. **M4 — Apply + image.** `loadgen apply`, the Dockerfile, and an end-to-end run
+4. **M4 — Apply + image.** `kfn apply`, the Dockerfile, and an end-to-end run
    against a local cluster (kind/minikube).
 5. **M5 — Observability.** `/metrics`, request-id propagation, polish.
 
 ## 8. Key decisions to confirm
 
-- **Module path**: I assumed `github.com/parham/loadgen-go`. What should it be?
+- **Module path**: I assumed `github.com/ParhamCh/kfn`. What should it be?
 - **Trigger route**: `POST /` vs `POST /invoke`. I lean `/` (simpler) with health on
   subpaths.
 - **Metrics**: Prometheus client (`/metrics`) now, or defer to M5?
