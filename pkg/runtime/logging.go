@@ -11,9 +11,15 @@ import (
 // is chosen so cluster log collectors (Fluent Bit, Loki, etc.) can parse fields
 // without a regex.
 func newLogger(cfg config) *slog.Logger {
-	return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: cfg.LogLevel,
 	}))
+	// Scope every line to the function so logs (and later metrics) are queryable
+	// per function. Only attach when set, to avoid an empty label on local runs.
+	if cfg.Name != "" {
+		logger = logger.With("function", cfg.Name)
+	}
+	return logger
 }
 
 // statusRecorder captures the response status code for access logging.

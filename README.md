@@ -45,11 +45,12 @@ to control the status and client-visible message. A `nil` response is `204 No Co
 
 ## Configuration (environment)
 
-| Variable         | Default | Meaning                                  |
-|------------------|---------|------------------------------------------|
-| `PORT`           | `8080`  | Listen port                              |
-| `SHUTDOWN_GRACE` | `15s`   | Drain window after SIGTERM               |
-| `LOG_LEVEL`      | `info`  | `debug` / `info` / `warn` / `error`      |
+| Variable         | Default | Meaning                                          |
+|------------------|---------|--------------------------------------------------|
+| `FUNCTION_NAME`  | _(unset)_ | Function identity; tags every log line (and metrics from M5) so a per-function autoscaler can scope its signal. Injected by the manifest generator. |
+| `PORT`           | `8080`  | Listen port                                      |
+| `SHUTDOWN_GRACE` | `15s`   | Drain window after SIGTERM                       |
+| `LOG_LEVEL`      | `info`  | `debug` / `info` / `warn` / `error`              |
 
 Per-invocation timeouts, concurrency limits and `/metrics` arrive in later milestones.
 

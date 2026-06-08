@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- Per-function identity: `FUNCTION_NAME` is read from the environment and attached as
+  a `function` attribute on every log line, so per-function workloads are attributable
+  in logs (and, from M5, metrics). Foundation for independent per-function autoscaling.
+
 ## [0.1.0] - 2026-06-08
 
 ### Added
