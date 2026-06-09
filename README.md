@@ -54,7 +54,7 @@ scale on.
 
 | Variable          | Default   | Meaning                                          |
 |-------------------|-----------|--------------------------------------------------|
-| `FUNCTION_NAME`   | _(unset)_ | Function identity; tags every log line (and metrics from M5) so a per-function autoscaler can scope its signal. Injected by the manifest generator. |
+| `FUNCTION_NAME`   | _(unset)_ | Function identity; tags every log line and metric (the `function` label) so a per-function autoscaler can scope its signal. Injected by the manifest generator. |
 | `PORT`            | `8080`    | Listen port                                      |
 | `INVOKE_TIMEOUT`  | `30s`     | Max time for one invocation before `504`; `0` disables |
 | `MAX_CONCURRENCY` | `0`       | Max simultaneous invocations per pod before `429`; `0` = unlimited |
