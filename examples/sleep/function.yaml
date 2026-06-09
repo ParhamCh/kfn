@@ -1,0 +1,22 @@
+# Load generator: latency / in-flight concurrency.
+# Build:  kfn build -f examples/sleep/function.yaml --func ./examples/sleep
+# Deploy: kfn apply -f examples/sleep/function.yaml
+name: load-sleep
+image: harbor.lan/kfn/load-sleep:0.1.0
+replicas: 1
+resources:
+  # Sleeping is idle work — keep the footprint tiny.
+  requests: { cpu: 25m, memory: 32Mi }
+  limits:   { cpu: 100m, memory: 64Mi }
+env:
+  # Per-request query params override these defaults.
+  - { name: SLEEP_DEFAULT, value: 200ms }
+  - { name: SLEEP_MAX,     value: 60s }
+  # Allow long sleeps without the runtime cutting them off with a 504.
+  # Must sit above SLEEP_MAX (which is the longest a single request can sleep).
+  - { name: INVOKE_TIMEOUT, value: 90s }
+  # Uncomment to demonstrate load shedding: the Nth+1 concurrent request gets a 429.
+  # - { name: MAX_CONCURRENCY, value: "10" }
+# Metrics are on by default. The signals this function drives:
+#   kfn_in_flight_requests        — live concurrency (the direct scale signal)
+#   kfn_request_duration_seconds  — the latency you dialed in
