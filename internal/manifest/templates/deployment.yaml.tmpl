@@ -32,11 +32,19 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Port }}
+{{- if .Monitoring.On }}
+            - name: metrics
+              containerPort: {{ .Monitoring.Port }}
+{{- end }}
           env:
             - name: FUNCTION_NAME
               value: {{ .Name | quote }}
             - name: SHUTDOWN_GRACE
               value: {{ .ShutdownGrace | quote }}
+{{- if .Monitoring.On }}
+            - name: METRICS_PORT
+              value: "{{ .Monitoring.Port }}"
+{{- end }}
 {{- range .Env }}
             - name: {{ .Name }}
               value: {{ .Value | quote }}

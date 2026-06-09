@@ -106,7 +106,8 @@ func sl(t *testing.T, v any) []any {
 }
 
 func TestRenderProducesDeploymentAndService(t *testing.T) {
-	spec := loadString(t, "name: hello\nimage: reg/hello:v1\nport: 9000\nenv:\n  - name: LOG_LEVEL\n    value: debug\n")
+	// Monitoring disabled to keep this focused on the core two objects.
+	spec := loadString(t, "name: hello\nimage: reg/hello:v1\nport: 9000\nmonitoring:\n  enabled: false\nenv:\n  - name: LOG_LEVEL\n    value: debug\n")
 	docs := renderDocs(t, spec)
 
 	if len(docs) != 2 {
@@ -161,9 +162,10 @@ func TestRenderProducesDeploymentAndService(t *testing.T) {
 }
 
 func TestIngressOffByDefault(t *testing.T) {
-	docs := renderDocs(t, loadString(t, minimalYAML))
-	if len(docs) != 2 {
-		t.Fatalf("got %d docs, want 2 (no Ingress unless enabled)", len(docs))
+	for _, d := range renderDocs(t, loadString(t, minimalYAML)) {
+		if d["kind"] == "Ingress" {
+			t.Fatal("rendered an Ingress without ingress.enabled")
+		}
 	}
 }
 
@@ -214,7 +216,7 @@ func TestIngressUserAnnotationWins(t *testing.T) {
 }
 
 func TestIngressTLSDisabledDropsTLS(t *testing.T) {
-	spec := loadString(t, "name: hello\nimage: reg/hello:v1\ningress:\n  enabled: true\n  tls: false\n")
+	spec := loadString(t, "name: hello\nimage: reg/hello:v1\nmonitoring:\n  enabled: false\ningress:\n  enabled: true\n  tls: false\n")
 	if spec.Ingress.UseTLS {
 		t.Fatal("UseTLS = true, want false when tls: false")
 	}
@@ -235,8 +237,74 @@ func TestIngressTLSDisabledDropsTLS(t *testing.T) {
 	}
 }
 
+func TestMonitoringOnByDefault(t *testing.T) {
+	spec := loadString(t, minimalYAML)
+	m := spec.Monitoring
+	if !m.On {
+		t.Fatal("Monitoring.On = false, want true by default")
+	}
+	if m.Port != 9090 {
+		t.Errorf("Monitoring.Port = %d, want 9090", m.Port)
+	}
+	if m.Path != "/metrics" {
+		t.Errorf("Monitoring.Path = %q, want /metrics", m.Path)
+	}
+	if m.ReleaseLabel != "kps" {
+		t.Errorf("Monitoring.ReleaseLabel = %q, want kps", m.ReleaseLabel)
+	}
+}
+
+func TestRenderServiceMonitor(t *testing.T) {
+	// minimalYAML has ingress off, monitoring on → Deployment + Service + ServiceMonitor.
+	docs := renderDocs(t, loadString(t, minimalYAML))
+	if len(docs) != 3 {
+		t.Fatalf("got %d docs, want 3 (Deployment + Service + ServiceMonitor)", len(docs))
+	}
+	sm := docs[2]
+	if sm["kind"] != "ServiceMonitor" {
+		t.Fatalf("third doc kind = %v, want ServiceMonitor", sm["kind"])
+	}
+	// Must carry the operator's discovery label, or it is never scraped.
+	if mp(t, mp(t, sm["metadata"])["labels"])["release"] != "kps" {
+		t.Errorf("ServiceMonitor missing release=kps label")
+	}
+	ep := mp(t, sl(t, mp(t, sm["spec"])["endpoints"])[0])
+	if ep["port"] != "metrics" || ep["path"] != "/metrics" {
+		t.Errorf("endpoint port/path = %v / %v, want metrics / /metrics", ep["port"], ep["path"])
+	}
+	nsel := sl(t, mp(t, mp(t, sm["spec"])["namespaceSelector"])["matchNames"])
+	if nsel[0] != "kfn" {
+		t.Errorf("namespaceSelector = %v, want [kfn]", nsel)
+	}
+
+	// Deployment + Service expose the metrics port.
+	depPorts := sl(t, mp(t, sl(t, mp(t, mp(t, mp(t, docs[0]["spec"])["template"])["spec"])["containers"])[0])["ports"])
+	if len(depPorts) != 2 || mp(t, depPorts[1])["name"] != "metrics" {
+		t.Errorf("deployment ports = %v, want http + metrics", depPorts)
+	}
+	svcPorts := sl(t, mp(t, docs[1]["spec"])["ports"])
+	if len(svcPorts) != 2 || mp(t, svcPorts[1])["name"] != "metrics" {
+		t.Errorf("service ports = %v, want http + metrics", svcPorts)
+	}
+}
+
+func TestMonitoringDisabledDropsEverything(t *testing.T) {
+	spec := loadString(t, "name: hello\nimage: reg/hello:v1\nmonitoring:\n  enabled: false\n")
+	if spec.Monitoring.On {
+		t.Fatal("Monitoring.On = true, want false when enabled: false")
+	}
+	docs := renderDocs(t, spec)
+	if len(docs) != 2 {
+		t.Fatalf("got %d docs, want 2 (no ServiceMonitor when disabled)", len(docs))
+	}
+	// No metrics port on the Service either.
+	if ports := sl(t, mp(t, docs[1]["spec"])["ports"]); len(ports) != 1 {
+		t.Errorf("service has %d ports, want 1 (no metrics port when disabled)", len(ports))
+	}
+}
+
 func TestRenderIngressDocument(t *testing.T) {
-	spec := loadString(t, "name: hello\nimage: reg/hello:v1\nport: 8080\ningress:\n  enabled: true\n")
+	spec := loadString(t, "name: hello\nimage: reg/hello:v1\nport: 8080\nmonitoring:\n  enabled: false\ningress:\n  enabled: true\n")
 	docs := renderDocs(t, spec)
 	if len(docs) != 3 {
 		t.Fatalf("got %d docs, want 3 (Deployment + Service + Ingress)", len(docs))

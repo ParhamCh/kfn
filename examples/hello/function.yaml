@@ -2,7 +2,7 @@
 # Unset fields are defaulted: namespace=kfn, nodeSelector role=workload, port=8080,
 # replicas=1, resources (50m/64Mi requests, 250m/128Mi limits), shutdownGrace=15s.
 name: hello
-image: harbor.lan/kfn/hello:0.1.0  # built and pushed via `kfn build` / `kfn push`
+image: harbor.lan/kfn/hello:0.2.0  # built and pushed via `kfn build` / `kfn push`
 port: 8080
 replicas: 2
 resources:
@@ -21,3 +21,9 @@ ingress:
   # tls: true              (default; cert-manager issues into <name>-tls)
   # clusterIssuer: cm-lab-ca   (default)
   # className: nginx           (default)
+# Metrics are on by default: a /metrics endpoint on port 9090 and a ServiceMonitor.
+# monitoring:
+#   enabled: true          (default; set false to disable metrics + ServiceMonitor)
+#   port: 9090             (default; the runtime's METRICS_PORT)
+#   interval: 30s          (default scrape interval)
+#   releaseLabel: kps      (default; label the prometheus-operator selects on)

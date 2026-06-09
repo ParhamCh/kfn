@@ -14,3 +14,8 @@ spec:
     - name: http
       port: {{ .Port }}
       targetPort: http
+{{- if .Monitoring.On }}
+    - name: metrics
+      port: {{ .Monitoring.Port }}
+      targetPort: metrics
+{{- end }}

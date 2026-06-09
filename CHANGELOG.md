@@ -6,6 +6,24 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-09
+
+### Added
+- **M6 observability**:
+  - Prometheus **`/metrics`** served on a dedicated port (`METRICS_PORT`, default `9090`)
+    — off the function port, so metrics are never exposed through the public Ingress.
+    Per-function metrics (constant `function` label): `kfn_requests_total{method,code}`
+    (includes `429`/`504`), `kfn_request_duration_seconds{method}`, and
+    `kfn_in_flight_requests`, plus the standard `go_*`/`process_*` collectors.
+  - **request-id propagation**: every invocation honors an inbound `X-Request-Id` or
+    generates one, echoes it on the response, adds `request_id` to the access log, and
+    exposes it to handlers via `runtime.RequestID(ctx)`.
+  - **ServiceMonitor** generation (on by default) via a `monitoring:` block in
+    `function.yaml`; the Deployment and Service gain a `metrics` port. The ServiceMonitor
+    is labelled `release: kps` so the kube-prometheus-stack operator discovers it
+    (overridable via `monitoring.releaseLabel`). Toggle with `monitoring.enabled`.
+- New runtime dependency: `github.com/prometheus/client_golang`.
+
 ## [0.5.0] - 2026-06-09
 
 ### Added
@@ -99,7 +117,8 @@ All notable changes to this project are documented here. The format is based on
 - Structured JSON access logging (one line per invocation).
 - `examples/hello` reference function and accompanying `function.yaml`.
 
-[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/ParhamCh/kfn/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ParhamCh/kfn/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ParhamCh/kfn/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/ParhamCh/kfn/compare/v0.2.0...v0.3.0

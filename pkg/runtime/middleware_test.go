@@ -91,7 +91,7 @@ func TestPanicYields500AndServerSurvives(t *testing.T) {
 	}))
 	hc := &health{}
 	hc.setReady(true)
-	mux := newMux(h, hc, config{}, discardLogger)
+	mux := newMux(h, hc, newMetrics(config{}), config{}, discardLogger)
 
 	panicNext = true
 	resp := do(t, mux, http.MethodPost, "/", nil)
@@ -180,7 +180,7 @@ func TestDrainWaitsForInflight(t *testing.T) {
 	}()
 	<-started // ensure the request is in-flight before draining
 
-	if err := drain(srv, hc, 2*time.Second, discardLogger); err != nil {
+	if err := drain(srv, &http.Server{}, hc, 2*time.Second, discardLogger); err != nil {
 		t.Fatalf("drain returned error: %v", err)
 	}
 	if hc.ready.Load() {
