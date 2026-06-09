@@ -166,8 +166,8 @@ kfn/
    readiness-gated graceful shutdown. Outcome: SIGTERM drains cleanly; tests cover it.
 3. **M3 — Manifest generator.** `internal/manifest` + `cmd/kfn render`. Outcome:
    `function.yaml` → valid Deployment+Service YAML (validated with `kubectl --dry-run`).
-4. **M4 — Apply + image.** `kfn apply`, the Dockerfile, and an end-to-end run
-   against a local cluster (kind/minikube).
+4. **M4 — Apply + image.** ✅ `kfn build`/`push`, the reference Dockerfile, and a
+   first end-to-end run on the cluster (function on `role=workload` nodes, scaled by hand).
 5. **M5 — Observability.** `/metrics`, request-id propagation, polish.
 
 ## 8. Key decisions to confirm
