@@ -50,11 +50,12 @@ func TestLoadAppliesDefaults(t *testing.T) {
 
 func TestLoadValidation(t *testing.T) {
 	cases := map[string]string{
-		"missing name":  "image: x:1\n",
-		"missing image": "name: hello\n",
-		"bad name":      "name: Hello_World\nimage: x:1\n",
-		"bad port":      "name: hello\nimage: x:1\nport: 70000\n",
-		"unknown field": "name: hello\nimage: x:1\nreplica: 3\n", // typo of replicas
+		"missing name":     "image: x:1\n",
+		"missing image":    "name: hello\n",
+		"bad name":         "name: Hello_World\nimage: x:1\n",
+		"bad port":         "name: hello\nimage: x:1\nport: 70000\n",
+		"unknown field":    "name: hello\nimage: x:1\nreplica: 3\n", // typo of replicas
+		"bad ingress host": "name: hello\nimage: x:1\ningress:\n  enabled: true\n  host: Bad_Host\n",
 	}
 	for name, yml := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -156,5 +157,114 @@ func TestRenderProducesDeploymentAndService(t *testing.T) {
 	sport := mp(t, sl(t, mp(t, svc["spec"])["ports"])[0])
 	if sport["port"] != 9000 || sport["targetPort"] != "http" {
 		t.Errorf("service port/targetPort = %v / %v", sport["port"], sport["targetPort"])
+	}
+}
+
+func TestIngressOffByDefault(t *testing.T) {
+	docs := renderDocs(t, loadString(t, minimalYAML))
+	if len(docs) != 2 {
+		t.Fatalf("got %d docs, want 2 (no Ingress unless enabled)", len(docs))
+	}
+}
+
+func TestIngressDefaults(t *testing.T) {
+	spec := loadString(t, "name: hello\nimage: reg/hello:v1\ningress:\n  enabled: true\n")
+	in := spec.Ingress
+	if in.Host != "hello.kfn.lan" {
+		t.Errorf("Host = %q, want hello.kfn.lan", in.Host)
+	}
+	if !in.UseTLS {
+		t.Error("UseTLS = false, want true by default when enabled")
+	}
+	if in.ClusterIssuer != "cm-lab-ca" {
+		t.Errorf("ClusterIssuer = %q, want cm-lab-ca", in.ClusterIssuer)
+	}
+	if in.ClassName != "nginx" {
+		t.Errorf("ClassName = %q, want nginx", in.ClassName)
+	}
+	if in.SecretName != "hello-tls" {
+		t.Errorf("SecretName = %q, want hello-tls", in.SecretName)
+	}
+	want := map[string]string{
+		"nginx.ingress.kubernetes.io/proxy-body-size":    "1m",
+		"nginx.ingress.kubernetes.io/proxy-read-timeout": "60",
+		"nginx.ingress.kubernetes.io/proxy-send-timeout": "60",
+		"cert-manager.io/cluster-issuer":                 "cm-lab-ca",
+		"nginx.ingress.kubernetes.io/ssl-redirect":       "true",
+	}
+	for k, v := range want {
+		if in.ResolvedAnnotations[k] != v {
+			t.Errorf("annotation %q = %q, want %q", k, in.ResolvedAnnotations[k], v)
+		}
+	}
+}
+
+func TestIngressProxyTimeoutFollowsInvokeTimeout(t *testing.T) {
+	spec := loadString(t, "name: hello\nimage: reg/hello:v1\nenv:\n  - name: INVOKE_TIMEOUT\n    value: 90s\ningress:\n  enabled: true\n")
+	if got := spec.Ingress.ResolvedAnnotations["nginx.ingress.kubernetes.io/proxy-read-timeout"]; got != "120" {
+		t.Errorf("proxy-read-timeout = %q, want 120 (90s + 30s headroom)", got)
+	}
+}
+
+func TestIngressUserAnnotationWins(t *testing.T) {
+	spec := loadString(t, "name: hello\nimage: reg/hello:v1\ningress:\n  enabled: true\n  annotations:\n    nginx.ingress.kubernetes.io/proxy-body-size: 10m\n")
+	if got := spec.Ingress.ResolvedAnnotations["nginx.ingress.kubernetes.io/proxy-body-size"]; got != "10m" {
+		t.Errorf("proxy-body-size = %q, want user override 10m", got)
+	}
+}
+
+func TestIngressTLSDisabledDropsTLS(t *testing.T) {
+	spec := loadString(t, "name: hello\nimage: reg/hello:v1\ningress:\n  enabled: true\n  tls: false\n")
+	if spec.Ingress.UseTLS {
+		t.Fatal("UseTLS = true, want false when tls: false")
+	}
+	ann := spec.Ingress.ResolvedAnnotations
+	if _, ok := ann["cert-manager.io/cluster-issuer"]; ok {
+		t.Error("cert-manager annotation present despite tls: false")
+	}
+	if _, ok := ann["nginx.ingress.kubernetes.io/ssl-redirect"]; ok {
+		t.Error("ssl-redirect annotation present despite tls: false")
+	}
+
+	docs := renderDocs(t, spec)
+	if len(docs) != 3 || docs[2]["kind"] != "Ingress" {
+		t.Fatalf("want 3 docs ending in Ingress, got %d", len(docs))
+	}
+	if _, ok := mp(t, docs[2]["spec"])["tls"]; ok {
+		t.Error("rendered Ingress has a tls block despite tls: false")
+	}
+}
+
+func TestRenderIngressDocument(t *testing.T) {
+	spec := loadString(t, "name: hello\nimage: reg/hello:v1\nport: 8080\ningress:\n  enabled: true\n")
+	docs := renderDocs(t, spec)
+	if len(docs) != 3 {
+		t.Fatalf("got %d docs, want 3 (Deployment + Service + Ingress)", len(docs))
+	}
+	ing := docs[2]
+	if ing["kind"] != "Ingress" {
+		t.Fatalf("third doc kind = %v, want Ingress", ing["kind"])
+	}
+	spc := mp(t, ing["spec"])
+	if spc["ingressClassName"] != "nginx" {
+		t.Errorf("ingressClassName = %v, want nginx", spc["ingressClassName"])
+	}
+	// TLS host + secret.
+	tls := mp(t, sl(t, spc["tls"])[0])
+	if h := sl(t, tls["hosts"]); h[0] != "hello.kfn.lan" {
+		t.Errorf("tls host = %v, want hello.kfn.lan", h[0])
+	}
+	if tls["secretName"] != "hello-tls" {
+		t.Errorf("tls secretName = %v, want hello-tls", tls["secretName"])
+	}
+	// Rule host + backend points at the Service port.
+	rule := mp(t, sl(t, spc["rules"])[0])
+	if rule["host"] != "hello.kfn.lan" {
+		t.Errorf("rule host = %v, want hello.kfn.lan", rule["host"])
+	}
+	p := mp(t, sl(t, mp(t, rule["http"])["paths"])[0])
+	backend := mp(t, mp(t, mp(t, p["backend"])["service"])["port"])
+	if backend["number"] != 8080 {
+		t.Errorf("backend service port = %v, want 8080", backend["number"])
 	}
 }
