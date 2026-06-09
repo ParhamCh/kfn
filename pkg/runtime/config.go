@@ -20,6 +20,10 @@ type config struct {
 	ShutdownGrace time.Duration
 	LogLevel      slog.Level
 
+	// MetricsPort is the dedicated port for the Prometheus /metrics endpoint, kept off
+	// the function port so metrics are never exposed through the function's Ingress.
+	MetricsPort string
+
 	// InvokeTimeout bounds how long a single invocation may run before the runtime
 	// gives up and returns 504. 0 disables the timeout.
 	InvokeTimeout time.Duration
@@ -33,6 +37,7 @@ func loadConfig() config {
 	return config{
 		Name:           envString("FUNCTION_NAME", ""),
 		Port:           envString("PORT", "8080"),
+		MetricsPort:    envString("METRICS_PORT", "9090"),
 		ShutdownGrace:  envDuration("SHUTDOWN_GRACE", 15*time.Second),
 		LogLevel:       envLevel("LOG_LEVEL", slog.LevelInfo),
 		InvokeTimeout:  envDuration("INVOKE_TIMEOUT", 30*time.Second),

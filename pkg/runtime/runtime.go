@@ -43,9 +43,10 @@ func Start(h Handler) {
 	h = withTimeout(cfg.InvokeTimeout, withRecover(logger, h))
 
 	hc := &health{}
+	mtr := newMetrics(cfg)
 	srv := &http.Server{
 		Addr:    ":" + cfg.Port,
-		Handler: newMux(h, hc, cfg, logger),
+		Handler: newMux(h, hc, mtr, cfg, logger),
 		// WriteTimeout is intentionally unset: response timing is governed by
 		// INVOKE_TIMEOUT in the handler path, so a hard WriteTimeout below it would
 		// truncate legitimately slow responses. ReadTimeout guards slow request reads
@@ -55,14 +56,25 @@ func Start(h Handler) {
 		IdleTimeout:       60 * time.Second,
 	}
 
-	if err := run(srv, hc, cfg, logger); err != nil {
+	// Serve /metrics on a dedicated port so it is never reachable through the function's
+	// public Ingress (which only routes the function port).
+	metricsMux := http.NewServeMux()
+	metricsMux.Handle("/metrics", mtr.handler())
+	metricsSrv := &http.Server{
+		Addr:              ":" + cfg.MetricsPort,
+		Handler:           metricsMux,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
+	if err := run(srv, metricsSrv, hc, cfg, logger); err != nil {
 		logger.Error("server exited with error", "err", err)
 		os.Exit(1)
 	}
 }
 
-// run starts the listener and handles graceful shutdown on SIGINT/SIGTERM.
-func run(srv *http.Server, hc *health, cfg config, logger *slog.Logger) error {
+// run starts both listeners (the function server and the dedicated metrics server) and
+// handles graceful shutdown on SIGINT/SIGTERM.
+func run(srv, metricsSrv *http.Server, hc *health, cfg config, logger *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -74,6 +86,12 @@ func run(srv *http.Server, hc *health, cfg config, logger *slog.Logger) error {
 			errCh <- err
 		}
 	}()
+	go func() {
+		logger.Info("metrics server listening", "addr", metricsSrv.Addr)
+		if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
+	}()
 
 	select {
 	case err := <-errCh:
@@ -82,19 +100,21 @@ func run(srv *http.Server, hc *health, cfg config, logger *slog.Logger) error {
 		logger.Info("shutdown signal received, draining", "grace", cfg.ShutdownGrace)
 	}
 
-	return drain(srv, hc, cfg.ShutdownGrace, logger)
+	return drain(srv, metricsSrv, hc, cfg.ShutdownGrace, logger)
 }
 
 // drain performs a readiness-gated graceful shutdown: it stops advertising readiness
 // so Kubernetes removes the pod from Service endpoints, then waits up to grace for
-// in-flight requests to finish before closing the server.
-func drain(srv *http.Server, hc *health, grace time.Duration, logger *slog.Logger) error {
+// in-flight requests to finish before closing the function server. The metrics server,
+// which holds no business traffic, is closed alongside it.
+func drain(srv, metricsSrv *http.Server, hc *health, grace time.Duration, logger *slog.Logger) error {
 	hc.setReady(false)
 	ctx, cancel := context.WithTimeout(context.Background(), grace)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		return err
 	}
+	_ = metricsSrv.Shutdown(ctx)
 	logger.Info("shutdown complete")
 	return nil
 }
@@ -103,14 +123,17 @@ func drain(srv *http.Server, hc *health, grace time.Duration, logger *slog.Logge
 // function. /healthz and /readyz are registered without a method, so the runtime owns
 // them for any verb; the catch-all "/" then receives every other path and method,
 // letting the function handle GET, POST, PUT, … itself (it sees req.Method). Go's
-// ServeMux resolves the more specific probe patterns ahead of "/". The invocation
-// chain is logging → concurrency limit → invoke, so shed (429) requests are still
-// logged.
-func newMux(h Handler, hc *health, cfg config, logger *slog.Logger) http.Handler {
+// ServeMux resolves the more specific probe patterns ahead of "/". The invocation chain
+// is request-id → logging → metrics → concurrency limit → invoke: request-id is
+// outermost so logs and the response header carry it, and metrics sit outside the
+// concurrency limit so shed (429) and timed-out (504) requests are still counted. Probe
+// traffic is intentionally neither logged nor measured. /metrics is served on a separate
+// port (see Start), not here.
+func newMux(h Handler, hc *health, mtr *metrics, cfg config, logger *slog.Logger) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", hc.liveness)
 	mux.HandleFunc("/readyz", hc.readiness)
-	mux.Handle("/", logging(logger, limitConcurrency(cfg.MaxConcurrency, invoke(h, logger))))
+	mux.Handle("/", withRequestID(logging(logger, mtr.middleware(limitConcurrency(cfg.MaxConcurrency, invoke(h, logger))))))
 	return mux
 }
 
