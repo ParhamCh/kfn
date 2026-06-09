@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-09
+
+### Added
+- **M5 ingress + TLS** — `function.yaml` gains an optional `ingress:` block. When
+  enabled, `kfn render`/`apply` emit a third object, an `Ingress` that routes
+  `https://<name>.kfn.lan` through ingress-nginx with TLS issued by cert-manager:
+  - Defaults: `host: <name>.kfn.lan`, `tls: true` (issued by `cm-lab-ca` into
+    `<name>-tls`), `className: nginx`. All overridable.
+  - nginx annotations are **derived from the runtime contract**: `proxy-body-size: 1m`
+    (the runtime's 1 MiB body cap) and `proxy-read/send-timeout` set above
+    `INVOKE_TIMEOUT` (so the runtime emits its own `504` before nginx cuts the
+    connection), plus `ssl-redirect` and `cert-manager.io/cluster-issuer` when TLS is on.
+    User-supplied `annotations:` override the derived ones.
+- Exposure is **opt-in**: a function is `ClusterIP`-only unless `ingress.enabled: true`.
+
 ## [0.4.0] - 2026-06-09
 
 ### Added
@@ -84,7 +99,8 @@ All notable changes to this project are documented here. The format is based on
 - Structured JSON access logging (one line per invocation).
 - `examples/hello` reference function and accompanying `function.yaml`.
 
-[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/ParhamCh/kfn/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ParhamCh/kfn/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/ParhamCh/kfn/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ParhamCh/kfn/compare/v0.1.0...v0.2.0
