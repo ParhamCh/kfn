@@ -198,6 +198,18 @@ kubectl -n kfn get pods -o wide                    # pods land on role=workload 
 kubectl -n kfn scale deploy/hello --replicas=5     # the autoscaler's eventual lever
 ```
 
+## Documentation
+
+This README is the overview. The detailed usage guides live in [`docs/`](docs/):
+
+| Guide | What it covers |
+|-------|----------------|
+| [Writing functions](docs/writing-functions.md) | The handler contract, `Request`/`Response`, helpers, errors, context/timeouts, request-id, config, local dev, structuring your own repo. |
+| [`function.yaml` reference](docs/function-yaml.md) | Every field, default and validation rule, incl. the `ingress:` and `monitoring:` blocks. |
+| [`kfn` CLI reference](docs/cli.md) | `render` / `build` / `push` / `apply` / `version`, all flags, stdin, engine selection. |
+| [Deploying end to end](docs/deploying.md) | Source → build → push → apply → expose → scale → observe, with troubleshooting. |
+| [Observability](docs/observability.md) | Metrics reference, ServiceMonitor wiring, PromQL recipes, request-id tracing. |
+
 ## Contributing & releases
 
 This repository follows **Git Flow**, **Conventional Commits** and **SemVer**. See
