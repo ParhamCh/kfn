@@ -4,10 +4,10 @@ A lightweight **function runtime** for Kubernetes: import the runtime, register 
 handler, and your function becomes a hardened, long-lived HTTP service ready to run as
 a pod. A companion CLI builds the image and generates the Kubernetes manifests to deploy it.
 
-> Status: **M4 — image + end-to-end deploy** complete (`kfn build`/`push`/`apply`). The
-> runtime (M1–M2) and manifest generator (M3) are in place, and a function now runs on
-> the cluster and scales by hand. See [`DESIGN.md`](DESIGN.md) for the full design and
-> milestone plan.
+> Status: **M5 — ingress + TLS** complete (opt-in `<name>.kfn.lan` with cert-manager).
+> The runtime (M1–M2), manifest generator (M3), image build/deploy (M4) and HTTPS
+> exposure are in place. See [`DESIGN.md`](DESIGN.md) for the full design and milestone
+> plan.
 
 ## The contract
 
@@ -113,7 +113,33 @@ The generated Deployment wires the runtime's `/healthz`/`/readyz` probes, inject
 `FUNCTION_NAME`, pins to `role=workload` nodes, sets resource requests, and runs as a
 non-root, read-only-rootfs container. **No HorizontalPodAutoscaler is created** — scale
 with `kubectl scale deploy/<name> -n kfn --replicas=N` (or your own autoscaler).
-A `ServiceMonitor` for Prometheus arrives in M5 with `/metrics`.
+A `ServiceMonitor` for Prometheus arrives in M6 with `/metrics`.
+
+### Exposing a function (Ingress + TLS)
+
+A function is `ClusterIP`-only unless it opts in. Add an `ingress:` block and `kfn`
+also renders an `Ingress` that routes `https://<name>.kfn.lan` through ingress-nginx,
+with TLS issued by cert-manager:
+
+```yaml
+ingress:
+  enabled: true              # default false → ClusterIP only
+  host: hello.kfn.lan        # default <name>.kfn.lan
+  # tls: true                  (default; cert issued into <name>-tls)
+  # clusterIssuer: cm-lab-ca   (default)
+  # className: nginx           (default)
+  # secretName: hello-tls      (default <name>-tls)
+  # annotations: {...}         (override/extend the derived nginx annotations)
+```
+
+`kfn` derives the nginx annotations from the runtime contract so the edge agrees with
+the pod: `proxy-body-size: 1m` (the runtime's 1 MiB body cap) and
+`proxy-read/send-timeout` set above `INVOKE_TIMEOUT` (so the runtime returns its own
+`504` first), plus `ssl-redirect` and the `cert-manager.io/cluster-issuer` annotation
+when TLS is on. Your own `annotations:` win over the derived ones.
+
+You own DNS: point `<name>.kfn.lan` at the ingress-nginx LoadBalancer IP
+(`10.10.0.240` here) via your resolver or `/etc/hosts`.
 
 ## Building & shipping the image
 

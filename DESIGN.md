@@ -168,7 +168,9 @@ kfn/
    `function.yaml` → valid Deployment+Service YAML (validated with `kubectl --dry-run`).
 4. **M4 — Apply + image.** ✅ `kfn build`/`push`, the reference Dockerfile, and a
    first end-to-end run on the cluster (function on `role=workload` nodes, scaled by hand).
-5. **M5 — Observability.** `/metrics`, request-id propagation, polish.
+5. **M5 — Ingress + TLS.** ✅ Optional `ingress:` block → an `Ingress` exposing
+   `https://<name>.kfn.lan` via ingress-nginx + cert-manager (`cm-lab-ca`).
+6. **M6 — Observability.** `/metrics`, ServiceMonitor, request-id propagation, polish.
 
 ## 8. Key decisions to confirm
 
