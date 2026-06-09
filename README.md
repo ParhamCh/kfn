@@ -54,7 +54,7 @@ scale on.
 
 | Variable          | Default   | Meaning                                          |
 |-------------------|-----------|--------------------------------------------------|
-| `FUNCTION_NAME`   | _(unset)_ | Function identity; tags every log line (and metrics from M5) so a per-function autoscaler can scope its signal. Injected by the manifest generator. |
+| `FUNCTION_NAME`   | _(unset)_ | Function identity; tags every log line and metric (the `function` label) so a per-function autoscaler can scope its signal. Injected by the manifest generator. |
 | `PORT`            | `8080`    | Listen port                                      |
 | `INVOKE_TIMEOUT`  | `30s`     | Max time for one invocation before `504`; `0` disables |
 | `MAX_CONCURRENCY` | `0`       | Max simultaneous invocations per pod before `429`; `0` = unlimited |
@@ -197,6 +197,18 @@ bin/kfn apply -f examples/hello/function.yaml
 kubectl -n kfn get pods -o wide                    # pods land on role=workload nodes
 kubectl -n kfn scale deploy/hello --replicas=5     # the autoscaler's eventual lever
 ```
+
+## Documentation
+
+This README is the overview. The detailed usage guides live in [`docs/`](docs/):
+
+| Guide | What it covers |
+|-------|----------------|
+| [Writing functions](docs/writing-functions.md) | The handler contract, `Request`/`Response`, helpers, errors, context/timeouts, request-id, config, local dev, structuring your own repo. |
+| [`function.yaml` reference](docs/function-yaml.md) | Every field, default and validation rule, incl. the `ingress:` and `monitoring:` blocks. |
+| [`kfn` CLI reference](docs/cli.md) | `render` / `build` / `push` / `apply` / `version`, all flags, stdin, engine selection. |
+| [Deploying end to end](docs/deploying.md) | Source → build → push → apply → expose → scale → observe, with troubleshooting. |
+| [Observability](docs/observability.md) | Metrics reference, ServiceMonitor wiring, PromQL recipes, request-id tracing. |
 
 ## Contributing & releases
 
