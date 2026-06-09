@@ -2,6 +2,8 @@
 // a function.yaml. It is the deploy-side companion to the kfn runtime library.
 //
 //	kfn render -f function.yaml [-o out.yaml] [-n namespace]
+//	kfn build  -f function.yaml [--func .] [--dockerfile build/Dockerfile] [--context .]
+//	kfn push   -f function.yaml
 //	kfn apply  -f function.yaml [-n namespace]
 //	kfn version
 package main
@@ -24,6 +26,10 @@ func main() {
 	switch os.Args[1] {
 	case "render":
 		err = runRender(os.Args[2:])
+	case "build":
+		err = runBuild(os.Args[2:])
+	case "push":
+		err = runPush(os.Args[2:])
 	case "apply":
 		err = runApply(os.Args[2:])
 	case "version", "--version", "-v":
@@ -49,11 +55,15 @@ func usage() {
 
 Usage:
   kfn render -f function.yaml [-o out.yaml] [-n namespace]
+  kfn build  -f function.yaml [--func .] [--dockerfile build/Dockerfile] [--context .]
+  kfn push   -f function.yaml
   kfn apply  -f function.yaml [-n namespace]
   kfn version
 
 Commands:
   render   Print the Deployment + Service YAML for the function.
+  build    Build the function's container image (docker/podman) from function.yaml.
+  push     Push the function's image to its registry.
   apply    Render and apply to the cluster via kubectl (creates the namespace if needed).
   version  Print the kfn version.
 `)
