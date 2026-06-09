@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Name }}
+  namespace: {{ .Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Name }}
+    app.kubernetes.io/managed-by: kfn
+    # The prometheus-operator selects ServiceMonitors by this label.
+    release: {{ .Monitoring.ReleaseLabel }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Name }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Namespace }}
+  endpoints:
+    - port: metrics
+      path: {{ .Monitoring.Path }}
+      interval: {{ .Monitoring.Interval }}

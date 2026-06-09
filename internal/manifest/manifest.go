@@ -43,9 +43,24 @@ type FunctionSpec struct {
 	Env           []EnvVar          `yaml:"env"`
 	ShutdownGrace string            `yaml:"shutdownGrace"`
 	Ingress       Ingress           `yaml:"ingress"`
+	Monitoring    Monitoring        `yaml:"monitoring"`
 
 	// TerminationGracePeriodSeconds is derived from ShutdownGrace; not read from YAML.
 	TerminationGracePeriodSeconds int `yaml:"-"`
+}
+
+// Monitoring controls the per-function Prometheus metrics surface: a dedicated metrics
+// port on the Deployment/Service and a ServiceMonitor that the prometheus-operator
+// scrapes. On by default. The ReleaseLabel is what gets the ServiceMonitor discovered by
+// the operator (kube-prometheus-stack selects on release=<helm release>).
+type Monitoring struct {
+	Enabled      *bool  `yaml:"enabled"`      // default true
+	Port         int    `yaml:"port"`         // default 9090 (matches the runtime's METRICS_PORT)
+	Path         string `yaml:"path"`         // default /metrics
+	Interval     string `yaml:"interval"`     // default 30s
+	ReleaseLabel string `yaml:"releaseLabel"` // default kps; label the operator selects on
+
+	On bool `yaml:"-"` // resolved: Enabled == nil || *Enabled
 }
 
 // Ingress optionally exposes the function through ingress-nginx at Host, with TLS
@@ -135,6 +150,30 @@ func (s *FunctionSpec) applyDefaults() {
 	s.TerminationGracePeriodSeconds = int(math.Ceil(grace.Seconds())) + 5
 
 	s.applyIngressDefaults()
+	s.applyMonitoringDefaults()
+}
+
+// applyMonitoringDefaults fills in the Monitoring block. Metrics are on unless explicitly
+// disabled. The defaults mirror the runtime (METRICS_PORT 9090) and the cluster's
+// prometheus-operator (ServiceMonitors are discovered by the release=kps label).
+func (s *FunctionSpec) applyMonitoringDefaults() {
+	m := &s.Monitoring
+	m.On = m.Enabled == nil || *m.Enabled
+	if !m.On {
+		return
+	}
+	if m.Port == 0 {
+		m.Port = 9090
+	}
+	if m.Path == "" {
+		m.Path = "/metrics"
+	}
+	if m.Interval == "" {
+		m.Interval = "30s"
+	}
+	if m.ReleaseLabel == "" {
+		m.ReleaseLabel = "kps"
+	}
 }
 
 // applyIngressDefaults fills in the Ingress block and resolves its nginx/cert-manager
@@ -217,6 +256,14 @@ func (s *FunctionSpec) validate() error {
 			return fmt.Errorf("manifest: ingress.clusterIssuer is required when tls is enabled")
 		}
 	}
+	if s.Monitoring.On {
+		if s.Monitoring.Port < 1 || s.Monitoring.Port > 65535 {
+			return fmt.Errorf("manifest: monitoring.port %d out of range 1-65535", s.Monitoring.Port)
+		}
+		if s.Monitoring.Port == s.Port {
+			return fmt.Errorf("manifest: monitoring.port %d must differ from the function port", s.Monitoring.Port)
+		}
+	}
 	return nil
 }
 
@@ -244,6 +291,14 @@ func (s *FunctionSpec) Render(w io.Writer) error {
 		}
 		if err := tmpl.ExecuteTemplate(w, "ingress.yaml.tmpl", s); err != nil {
 			return fmt.Errorf("manifest: render ingress: %w", err)
+		}
+	}
+	if s.Monitoring.On {
+		if _, err := io.WriteString(w, "---\n"); err != nil {
+			return err
+		}
+		if err := tmpl.ExecuteTemplate(w, "servicemonitor.yaml.tmpl", s); err != nil {
+			return fmt.Errorf("manifest: render servicemonitor: %w", err)
 		}
 	}
 	return nil
