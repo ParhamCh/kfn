@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Name }}
+  namespace: {{ .Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Name }}
+    app.kubernetes.io/managed-by: kfn
+  annotations:
+{{- range $k, $v := .Ingress.ResolvedAnnotations }}
+    {{ $k }}: {{ $v | quote }}
+{{- end }}
+spec:
+  ingressClassName: {{ .Ingress.ClassName }}
+{{- if .Ingress.UseTLS }}
+  tls:
+    - hosts:
+        - {{ .Ingress.Host }}
+      secretName: {{ .Ingress.SecretName }}
+{{- end }}
+  rules:
+    - host: {{ .Ingress.Host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Name }}
+                port:
+                  number: {{ .Port }}

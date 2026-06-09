@@ -1,7 +1,8 @@
 // Package manifest turns a function's function.yaml into the Kubernetes objects that
-// deploy it: one Deployment and one Service per function. Rendering is done with
-// text/template over a typed spec (no client-go), so the output is plain, auditable
-// YAML. A ServiceMonitor is intentionally not emitted yet — it arrives in M5 alongside
+// deploy it: one Deployment and one Service per function, plus an optional Ingress
+// (with cert-manager TLS) when the function opts into being exposed. Rendering is done
+// with text/template over a typed spec (no client-go), so the output is plain, auditable
+// YAML. A ServiceMonitor is intentionally not emitted yet — it arrives in M6 alongside
 // the /metrics endpoint it would scrape.
 package manifest
 
@@ -9,6 +10,7 @@ import (
 	"embed"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"regexp"
 	"strconv"
@@ -24,21 +26,42 @@ var templates embed.FS
 // dns1123Label matches a valid Kubernetes object name (RFC 1123 label).
 var dns1123Label = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
 
+// dns1123Subdomain matches a valid DNS subdomain (e.g. an Ingress host like
+// hello.kfn.lan): one or more dot-separated RFC 1123 labels.
+var dns1123Subdomain = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`)
+
 // FunctionSpec is the function.yaml schema plus derived/defaulted fields. It is the
 // single source of data passed to the templates.
 type FunctionSpec struct {
-	Name         string            `yaml:"name"`
-	Image        string            `yaml:"image"`
-	Port         int               `yaml:"port"`
-	Replicas     int               `yaml:"replicas"`
-	Namespace    string            `yaml:"namespace"`
-	NodeSelector map[string]string `yaml:"nodeSelector"`
-	Resources    Resources         `yaml:"resources"`
-	Env          []EnvVar          `yaml:"env"`
-	ShutdownGrace string           `yaml:"shutdownGrace"`
+	Name          string            `yaml:"name"`
+	Image         string            `yaml:"image"`
+	Port          int               `yaml:"port"`
+	Replicas      int               `yaml:"replicas"`
+	Namespace     string            `yaml:"namespace"`
+	NodeSelector  map[string]string `yaml:"nodeSelector"`
+	Resources     Resources         `yaml:"resources"`
+	Env           []EnvVar          `yaml:"env"`
+	ShutdownGrace string            `yaml:"shutdownGrace"`
+	Ingress       Ingress           `yaml:"ingress"`
 
 	// TerminationGracePeriodSeconds is derived from ShutdownGrace; not read from YAML.
 	TerminationGracePeriodSeconds int `yaml:"-"`
+}
+
+// Ingress optionally exposes the function through ingress-nginx at Host, with TLS
+// issued by cert-manager. It is off unless Enabled. UseTLS and ResolvedAnnotations are
+// derived during applyDefaults, not read from YAML.
+type Ingress struct {
+	Enabled       bool              `yaml:"enabled"`
+	Host          string            `yaml:"host"`          // default <name>.kfn.lan
+	TLS           *bool             `yaml:"tls"`           // default true when enabled
+	ClusterIssuer string            `yaml:"clusterIssuer"` // default cm-lab-ca
+	ClassName     string            `yaml:"className"`     // default nginx
+	SecretName    string            `yaml:"secretName"`    // default <name>-tls
+	Annotations   map[string]string `yaml:"annotations"`   // overrides merged over derived
+
+	UseTLS              bool              `yaml:"-"`
+	ResolvedAnnotations map[string]string `yaml:"-"`
 }
 
 // Resources holds container resource requests and limits.
@@ -110,6 +133,61 @@ func (s *FunctionSpec) applyDefaults() {
 		grace = d
 	}
 	s.TerminationGracePeriodSeconds = int(math.Ceil(grace.Seconds())) + 5
+
+	s.applyIngressDefaults()
+}
+
+// applyIngressDefaults fills in the Ingress block and resolves its nginx/cert-manager
+// annotations from the runtime contract. A no-op unless ingress is enabled.
+func (s *FunctionSpec) applyIngressDefaults() {
+	in := &s.Ingress
+	if !in.Enabled {
+		return
+	}
+	if in.Host == "" {
+		in.Host = s.Name + ".kfn.lan"
+	}
+	if in.ClassName == "" {
+		in.ClassName = "nginx"
+	}
+	if in.ClusterIssuer == "" {
+		in.ClusterIssuer = "cm-lab-ca"
+	}
+	if in.SecretName == "" {
+		in.SecretName = s.Name + "-tls"
+	}
+	in.UseTLS = in.TLS == nil || *in.TLS
+
+	// Derive annotations from the runtime's own limits so the edge agrees with the pod:
+	// cap the body at the runtime's 1 MiB, and keep nginx's proxy timeout above
+	// INVOKE_TIMEOUT so the runtime emits its own 504 before nginx severs the connection.
+	proxyTimeout := invokeTimeoutSeconds(s.Env) + 30
+	derived := map[string]string{
+		"nginx.ingress.kubernetes.io/proxy-body-size":    "1m",
+		"nginx.ingress.kubernetes.io/proxy-read-timeout": strconv.Itoa(proxyTimeout),
+		"nginx.ingress.kubernetes.io/proxy-send-timeout": strconv.Itoa(proxyTimeout),
+	}
+	if in.UseTLS {
+		derived["cert-manager.io/cluster-issuer"] = in.ClusterIssuer
+		derived["nginx.ingress.kubernetes.io/ssl-redirect"] = "true"
+	}
+	// User-supplied annotations win over the derived defaults.
+	maps.Copy(derived, in.Annotations)
+	in.ResolvedAnnotations = derived
+}
+
+// invokeTimeoutSeconds returns the function's INVOKE_TIMEOUT (from env) in whole
+// seconds, defaulting to 30 (the runtime default) when unset or unparseable.
+func invokeTimeoutSeconds(env []EnvVar) int {
+	for _, e := range env {
+		if e.Name != "INVOKE_TIMEOUT" {
+			continue
+		}
+		if d, err := time.ParseDuration(e.Value); err == nil && d > 0 {
+			return int(math.Ceil(d.Seconds()))
+		}
+	}
+	return 30
 }
 
 func (s *FunctionSpec) validate() error {
@@ -127,6 +205,17 @@ func (s *FunctionSpec) validate() error {
 	}
 	if s.Replicas < 0 {
 		return fmt.Errorf("manifest: replicas %d must be >= 0", s.Replicas)
+	}
+	if s.Ingress.Enabled {
+		if !dns1123Subdomain.MatchString(s.Ingress.Host) {
+			return fmt.Errorf("manifest: ingress.host %q is not a valid DNS subdomain", s.Ingress.Host)
+		}
+		if s.Ingress.ClassName == "" {
+			return fmt.Errorf("manifest: ingress.className is required")
+		}
+		if s.Ingress.UseTLS && s.Ingress.ClusterIssuer == "" {
+			return fmt.Errorf("manifest: ingress.clusterIssuer is required when tls is enabled")
+		}
 	}
 	return nil
 }
@@ -148,6 +237,14 @@ func (s *FunctionSpec) Render(w io.Writer) error {
 	}
 	if err := tmpl.ExecuteTemplate(w, "service.yaml.tmpl", s); err != nil {
 		return fmt.Errorf("manifest: render service: %w", err)
+	}
+	if s.Ingress.Enabled {
+		if _, err := io.WriteString(w, "---\n"); err != nil {
+			return err
+		}
+		if err := tmpl.ExecuteTemplate(w, "ingress.yaml.tmpl", s); err != nil {
+			return fmt.Errorf("manifest: render ingress: %w", err)
+		}
 	}
 	return nil
 }
