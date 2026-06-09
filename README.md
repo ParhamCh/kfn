@@ -4,10 +4,11 @@ A lightweight **function runtime** for Kubernetes: import the runtime, register 
 handler, and your function becomes a hardened, long-lived HTTP service ready to run as
 a pod. A companion CLI builds the image and generates the Kubernetes manifests to deploy it.
 
-> Status: **M5 — ingress + TLS** complete (opt-in `<name>.kfn.lan` with cert-manager).
-> The runtime (M1–M2), manifest generator (M3), image build/deploy (M4) and HTTPS
-> exposure are in place. See [`DESIGN.md`](DESIGN.md) for the full design and milestone
-> plan.
+> Status: **M6 — observability** complete (Prometheus `/metrics`, ServiceMonitor,
+> request-id). With the runtime (M1–M2), manifest generator (M3), image build/deploy
+> (M4) and ingress/TLS (M5) in place, functions now emit per-function scrape signals —
+> the input for a custom autoscaler. See [`DESIGN.md`](DESIGN.md) for the full design and
+> milestone plan.
 
 ## The contract
 
@@ -57,10 +58,25 @@ scale on.
 | `PORT`            | `8080`    | Listen port                                      |
 | `INVOKE_TIMEOUT`  | `30s`     | Max time for one invocation before `504`; `0` disables |
 | `MAX_CONCURRENCY` | `0`       | Max simultaneous invocations per pod before `429`; `0` = unlimited |
+| `METRICS_PORT`    | `9090`    | Dedicated port for the Prometheus `/metrics` endpoint (kept off the function port) |
 | `SHUTDOWN_GRACE`  | `15s`     | Drain window after SIGTERM                        |
 | `LOG_LEVEL`       | `info`    | `debug` / `info` / `warn` / `error`              |
 
-Prometheus `/metrics` arrives in M5.
+## Metrics & request-id
+
+The runtime serves Prometheus metrics on a **dedicated port** (`METRICS_PORT`, default
+`9090`) at `/metrics` — separate from the function port, so metrics are never exposed
+through the public Ingress. Every series carries a constant `function` label:
+
+| Metric                          | Type      | Labels         | Use |
+|---------------------------------|-----------|----------------|-----|
+| `kfn_requests_total`            | counter   | `method`,`code`| rate, error rate, `429`/`504` saturation |
+| `kfn_request_duration_seconds`  | histogram | `method`       | latency / SLOs |
+| `kfn_in_flight_requests`        | gauge     | —              | live concurrency (a direct scale signal) |
+
+The standard `go_*` / `process_*` collectors are included too. Every invocation also gets
+an `X-Request-Id` (honored from the inbound request or generated); it's echoed on the
+response, added to the access log, and available to handlers via `runtime.RequestID(ctx)`.
 
 ## Quickstart
 
@@ -113,7 +129,6 @@ The generated Deployment wires the runtime's `/healthz`/`/readyz` probes, inject
 `FUNCTION_NAME`, pins to `role=workload` nodes, sets resource requests, and runs as a
 non-root, read-only-rootfs container. **No HorizontalPodAutoscaler is created** — scale
 with `kubectl scale deploy/<name> -n kfn --replicas=N` (or your own autoscaler).
-A `ServiceMonitor` for Prometheus arrives in M6 with `/metrics`.
 
 ### Exposing a function (Ingress + TLS)
 
@@ -140,6 +155,25 @@ when TLS is on. Your own `annotations:` win over the derived ones.
 
 You own DNS: point `<name>.kfn.lan` at the ingress-nginx LoadBalancer IP
 (`10.10.0.240` here) via your resolver or `/etc/hosts`.
+
+### Scraping with Prometheus (ServiceMonitor)
+
+Metrics are **on by default**: `kfn` also renders a `ServiceMonitor` (and adds a
+`metrics` port to the Deployment + Service) so the prometheus-operator scrapes each
+function automatically. The ServiceMonitor is labelled `release: kps` — the label the
+kube-prometheus-stack operator selects on; change it for a different operator release:
+
+```yaml
+monitoring:
+  enabled: true            # default; set false to drop metrics port + ServiceMonitor
+  port: 9090               # default (must match METRICS_PORT)
+  interval: 30s            # default scrape interval
+  releaseLabel: kps        # default; the operator's ServiceMonitor selector label
+```
+
+Then query per function in Prometheus, e.g.
+`rate(kfn_requests_total{function="hello"}[1m])` or
+`kfn_in_flight_requests{function="hello"}` — the signals a custom autoscaler scales on.
 
 ## Building & shipping the image
 

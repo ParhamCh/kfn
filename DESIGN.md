@@ -170,7 +170,9 @@ kfn/
    first end-to-end run on the cluster (function on `role=workload` nodes, scaled by hand).
 5. **M5 — Ingress + TLS.** ✅ Optional `ingress:` block → an `Ingress` exposing
    `https://<name>.kfn.lan` via ingress-nginx + cert-manager (`cm-lab-ca`).
-6. **M6 — Observability.** `/metrics`, ServiceMonitor, request-id propagation, polish.
+6. **M6 — Observability.** ✅ Prometheus `/metrics` on a dedicated port, per-function
+   metrics + ServiceMonitor (operator-discovered via `release` label), request-id
+   propagation. Outcome: per-function scrape signals for a custom autoscaler.
 
 ## 8. Key decisions to confirm
 
