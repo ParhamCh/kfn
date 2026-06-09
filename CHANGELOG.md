@@ -6,6 +6,27 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-09
+
+### Added
+- **M4 image + end-to-end deploy**:
+  - Reference multi-stage `build/Dockerfile` — compiles any function (the author's
+    `main.go` + the kfn runtime) into a static binary on `distroless/static:nonroot`
+    (uid 65532, matching the generated Deployment). `FUNC_PKG` build arg selects the
+    package (default `.`; the bundled example is `./examples/hello`).
+  - `kfn build -f function.yaml [--func .] [--dockerfile build/Dockerfile] [--context .]`
+    builds the image (reference from `function.yaml`) via `docker`/`podman`.
+  - `kfn push -f function.yaml` pushes it to its registry.
+  - Container engine is auto-detected (`docker` preferred, then `podman`); override with
+    `KFN_CONTAINER_ENGINE`.
+- The reference function now runs on the cluster and scales by hand
+  (`kubectl scale deploy/<name> -n kfn --replicas=N`) — the lever the user's autoscaler
+  will drive.
+
+### Changed
+- `examples/hello/function.yaml` image reference is now `harbor.lan/kfn/hello:0.1.0`
+  (real registry/project) instead of the `harbor.example.com` placeholder.
+
 ## [0.3.0] - 2026-06-08
 
 ### Added
@@ -63,7 +84,8 @@ All notable changes to this project are documented here. The format is based on
 - Structured JSON access logging (one line per invocation).
 - `examples/hello` reference function and accompanying `function.yaml`.
 
-[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/ParhamCh/kfn/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/ParhamCh/kfn/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ParhamCh/kfn/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ParhamCh/kfn/releases/tag/v0.1.0

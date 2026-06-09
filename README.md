@@ -2,11 +2,12 @@
 
 A lightweight **function runtime** for Kubernetes: import the runtime, register one
 handler, and your function becomes a hardened, long-lived HTTP service ready to run as
-a pod. A companion CLI (coming in M3) generates the Kubernetes manifests to deploy it.
+a pod. A companion CLI builds the image and generates the Kubernetes manifests to deploy it.
 
-> Status: **M3 — manifest generator** complete (`kfn render`/`apply`). The runtime
-> (M1–M2) and the deploy CLI are in place. See [`DESIGN.md`](DESIGN.md) for the full
-> design and milestone plan.
+> Status: **M4 — image + end-to-end deploy** complete (`kfn build`/`push`/`apply`). The
+> runtime (M1–M2) and manifest generator (M3) are in place, and a function now runs on
+> the cluster and scales by hand. See [`DESIGN.md`](DESIGN.md) for the full design and
+> milestone plan.
 
 ## The contract
 
@@ -96,7 +97,7 @@ bin/kfn apply -f examples/hello/function.yaml -n staging # override namespace
 
 ```yaml
 name: hello
-image: harbor.example.com/kfn/hello:0.1.0
+image: harbor.lan/kfn/hello:0.1.0
 port: 8080            # default 8080
 replicas: 2           # default 1
 # namespace: kfn               (default)
@@ -113,6 +114,29 @@ The generated Deployment wires the runtime's `/healthz`/`/readyz` probes, inject
 non-root, read-only-rootfs container. **No HorizontalPodAutoscaler is created** — scale
 with `kubectl scale deploy/<name> -n kfn --replicas=N` (or your own autoscaler).
 A `ServiceMonitor` for Prometheus arrives in M5 with `/metrics`.
+
+## Building & shipping the image
+
+The same reference [`build/Dockerfile`](build/Dockerfile) builds any function: the
+author's `main.go` plus the kfn runtime compile into one static binary on top of
+`distroless/static:nonroot` (runs as uid 65532, matching the Deployment). The image
+reference comes from `function.yaml`; `kfn build`/`push` shell out to `docker` (or
+`podman` — override with `KFN_CONTAINER_ENGINE`).
+
+```bash
+# One-time: authenticate to the registry and create a (public) project for the images.
+docker login harbor.lan
+
+# Build the example. --func selects the package to compile (default ".", i.e. the
+# function's own repo root); the bundled example lives in ./examples/hello.
+bin/kfn build -f examples/hello/function.yaml --func ./examples/hello
+bin/kfn push  -f examples/hello/function.yaml      # → harbor.lan/kfn/hello:0.1.0
+
+# Deploy, then scale by hand (each function is its own Deployment).
+bin/kfn apply -f examples/hello/function.yaml
+kubectl -n kfn get pods -o wide                    # pods land on role=workload nodes
+kubectl -n kfn scale deploy/hello --replicas=5     # the autoscaler's eventual lever
+```
 
 ## Contributing & releases
 
