@@ -84,6 +84,22 @@ curl -s 'http://localhost:9090/api/v1/targets?state=active' \
 curl -s 'http://localhost:9090/api/v1/query?query=kfn_requests_total%7Bfunction%3D%22hello%22%7D'
 ```
 
+## Generating load to watch
+
+To make these signals move on demand, deploy a load generator from
+[`examples/`](../examples/). [`examples/sleep`](../examples/sleep) holds requests open for a
+configurable duration, so driving it concurrently pushes `kfn_in_flight_requests` up and
+fills the latency histogram — a controllable source for testing dashboards and (eventually)
+the autoscaler:
+
+```bash
+# with examples/sleep deployed and svc/load-sleep port-forwarded on :8080
+for i in $(seq 20); do curl -s 'localhost:8080/?duration=2s' >/dev/null & done
+```
+
+(Further load shapes are planned — a `cpu` generator to drive `process_cpu_seconds_total`
+and a `ram` one to drive `process_resident_memory_bytes`.)
+
 ## PromQL recipes
 
 Per-function signals an autoscaler (or a dashboard) can use:
