@@ -1,0 +1,45 @@
+# load-cpu — a load generator that burns CPU for a configurable window across N workers
+# (optionally at a fractional duty cycle). Drive it to exercise CPU scaling + throttling.
+# Build & deploy:
+#   kfn build -f examples/cpu/function.yaml --func ./examples/cpu
+#   kfn push  -f examples/cpu/function.yaml
+#   kfn apply -f examples/cpu/function.yaml
+name: load-cpu
+image: harbor.lan/kfn/load-cpu:0.1.0
+port: 8080            # default 8080
+replicas: 1
+resources:
+  # Sized small for modest nodes — the burn is capped at ~half a core, so it pressures CPU
+  # (and shows throttling) without disrupting a small cluster.
+  requests:
+    cpu: 100m
+    memory: 32Mi
+  limits:
+    cpu: 500m
+    memory: 64Mi
+env:
+  # Per-request query params (?duration=, ?workers=, ?load=) override these defaults.
+  - name: CPU_DEFAULT
+    value: 500ms
+  - name: CPU_MAX
+    value: 30s
+  # Keep INVOKE_TIMEOUT above CPU_MAX so long burns aren't cut short with a 504.
+  - name: INVOKE_TIMEOUT
+    value: 60s
+  # Cap on parallel workers — kept small for modest nodes (default is the container GOMAXPROCS).
+  - name: CPU_MAX_WORKERS
+    value: "2"
+# Expose at https://load-cpu.kfn.lan so load can be driven from outside the cluster,
+# e.g. curl 'https://load-cpu.kfn.lan/?duration=5s&workers=2'.
+ingress:
+  enabled: true
+  host: load-cpu.kfn.lan     # default <name>.kfn.lan
+  tls: true                  # cert-manager issues a cert into <name>-tls
+  # clusterIssuer: cm-lab-ca   (default)
+  # className: nginx           (default)
+# Prometheus metrics are on by default (/metrics on :9090 + a ServiceMonitor).
+# Signal this generator drives:
+#   process_cpu_seconds_total — container CPU usage (watch rate() and CPU throttling)
+# monitoring:
+#   enabled: true            (default; false drops the metrics port + ServiceMonitor)
+#   releaseLabel: kps        (default; the label the prometheus-operator selects on)

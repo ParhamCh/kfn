@@ -12,8 +12,10 @@ All notable changes to this project are documented here. The format is based on
   - `sleep` (`examples/sleep`): holds each request open for a configurable, optionally
     jittered duration without burning CPU — a pure in-flight-concurrency generator with
     `fixed`/`uniform`/`exp` latency distributions, cooperative cancellation, and a hard
-    `SLEEP_MAX` cap. Drives `kfn_in_flight_requests` and the latency histogram. (`cpu`,
-    `ram` and `mixed` to follow.)
+    `SLEEP_MAX` cap. Drives `kfn_in_flight_requests` and the latency histogram.
+  - `cpu` (`examples/cpu`): burns CPU for a configurable window across N workers, optionally
+    at a fractional duty cycle (`load`), via a tight SHA-256 loop. Reports throughput and
+    drives `process_cpu_seconds_total`. (`ram` and `mixed` to follow.)
 
 ## [0.6.0] - 2026-06-09
 

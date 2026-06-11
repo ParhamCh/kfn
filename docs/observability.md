@@ -97,8 +97,15 @@ the autoscaler:
 for i in $(seq 20); do curl -s 'localhost:8080/?duration=2s' >/dev/null & done
 ```
 
-(Further load shapes are planned — a `cpu` generator to drive `process_cpu_seconds_total`
-and a `ram` one to drive `process_resident_memory_bytes`.)
+[`examples/cpu`](../examples/cpu) burns CPU across N workers to drive
+`process_cpu_seconds_total` (and to provoke CPU throttling against a pod's limit):
+
+```bash
+# cores consumed by the cpu generator
+sum(rate(process_cpu_seconds_total{function="load-cpu"}[1m]))
+```
+
+(A `ram` generator to drive `process_resident_memory_bytes` is planned.)
 
 ## PromQL recipes
 
