@@ -1,13 +1,17 @@
-# Function metadata consumed by `kfn render` / `kfn apply`.
-# Unset fields are defaulted: namespace=kfn, nodeSelector role=workload, port=8080,
-# replicas=1, resources (50m/64Mi requests, 250m/128Mi limits), shutdownGrace=15s.
+# hello — a minimal kfn function that returns a JSON greeting.
+# Build & deploy:
+#   kfn build -f examples/hello/function.yaml --func ./examples/hello
+#   kfn push  -f examples/hello/function.yaml
+#   kfn apply -f examples/hello/function.yaml
+#
+# Only `name` and `image` are required; every other field below is shown at its default.
 name: hello
-image: harbor.lan/kfn/hello:0.2.0  # built and pushed via `kfn build` / `kfn push`
-port: 8080
+image: harbor.lan/kfn/hello:0.2.0
+port: 8080            # default 8080
 replicas: 2
 resources:
   requests:
-    cpu: 50m
+    cpu: 50m          # defaults: requests 50m / 64Mi, limits 250m / 128Mi
     memory: 64Mi
   limits:
     cpu: 250m
@@ -15,15 +19,15 @@ resources:
 env:
   - name: LOG_LEVEL
     value: info
+# Expose at https://hello.kfn.lan through ingress-nginx, TLS issued by cert-manager.
 ingress:
   enabled: true
-  host: hello.kfn.lan      # default <name>.kfn.lan
-  # tls: true              (default; cert-manager issues into <name>-tls)
+  host: hello.kfn.lan        # default <name>.kfn.lan
+  tls: true                  # cert-manager issues a cert into <name>-tls
   # clusterIssuer: cm-lab-ca   (default)
   # className: nginx           (default)
-# Metrics are on by default: a /metrics endpoint on port 9090 and a ServiceMonitor.
+# Prometheus metrics are on by default (/metrics on :9090 + a ServiceMonitor).
 # monitoring:
-#   enabled: true          (default; set false to disable metrics + ServiceMonitor)
-#   port: 9090             (default; the runtime's METRICS_PORT)
-#   interval: 30s          (default scrape interval)
-#   releaseLabel: kps      (default; label the prometheus-operator selects on)
+#   enabled: true            (default; false drops the metrics port + ServiceMonitor)
+#   interval: 30s            (default scrape interval)
+#   releaseLabel: kps        (default; the label the prometheus-operator selects on)

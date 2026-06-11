@@ -76,17 +76,19 @@ would otherwise reimplement.
 
 | Concern            | Behavior |
 |--------------------|----------|
-| Routes             | `POST /` (or `/invoke`) → handler; `GET /healthz` liveness; `GET /readyz` readiness; `GET /metrics` (optional) |
-| Config             | Env vars: `PORT` (8080), `INVOKE_TIMEOUT` (30s), `MAX_CONCURRENCY` (0=unlimited), `SHUTDOWN_GRACE` (15s), `LOG_LEVEL` |
-| Timeouts           | Per-invocation `context.WithTimeout`; server read/write/idle timeouts set |
-| Concurrency        | Optional weighted semaphore; over-limit → 429 |
-| Panic recovery     | Handler panics recovered → 500, stack logged, process stays up |
-| Graceful shutdown  | SIGTERM → `/readyz` flips to NotReady → drain in-flight up to grace → `server.Shutdown` |
-| Logging            | Structured (`log/slog`), one line per request: method, path, status, duration |
-| Observability      | `/metrics`: invocation count, in-flight, duration histogram, error count |
+| Routes             | Catch-all `/` (any method) → handler; `/healthz` liveness and `/readyz` readiness reserved for the runtime across all methods. `/metrics` is served on a **separate port** (see Observability), not the function port. |
+| Config             | Env vars: `FUNCTION_NAME` (unset), `PORT` (8080), `METRICS_PORT` (9090), `INVOKE_TIMEOUT` (30s), `MAX_CONCURRENCY` (0=unlimited), `SHUTDOWN_GRACE` (15s), `LOG_LEVEL` (info) |
+| Timeouts           | Per-invocation `context.WithTimeout` → `504`; server read/idle timeouts set (`WriteTimeout` left unset so `INVOKE_TIMEOUT` governs response timing) |
+| Concurrency        | Optional per-pod semaphore; over-limit → `429` |
+| Panic recovery     | Handler panics recovered → `500`, stack logged, process stays up |
+| Graceful shutdown  | SIGTERM → `/readyz` flips to NotReady → drain in-flight up to grace → `server.Shutdown` (both the function and metrics servers) |
+| Logging            | Structured (`log/slog`), one line per invocation: `function`, method, path, status, duration, `request_id` |
+| Request-id         | Honor inbound `X-Request-Id` or generate one; echo on the response, add to the log line, expose via `runtime.RequestID(ctx)` |
+| Observability      | Prometheus `/metrics` on a dedicated `METRICS_PORT`, every series carrying a constant `function` label: `kfn_requests_total{method,code}` (incl. `429`/`504`), `kfn_request_duration_seconds{method}`, `kfn_in_flight_requests`, plus `go_*`/`process_*` |
 
 Readiness is the subtle bit: on SIGTERM we fail `/readyz` *before* draining so k8s
-stops routing new traffic while we finish in-flight requests.
+stops routing new traffic while we finish in-flight requests. Metrics live on their own
+port so they are never reachable through the function's public Ingress.
 
 ## 4. Manifest generation
 
@@ -117,6 +119,15 @@ Generated objects:
   wired to the runtime, resource requests/limits, env, `terminationGracePeriodSeconds`
   aligned to `SHUTDOWN_GRACE`, sane securityContext (non-root, read-only rootfs).
 - **Service**: ClusterIP exposing the port.
+- **Ingress** *(optional, off by default — M5)*: an `ingress:` block opts a function in
+  to `https://<name>.kfn.lan` via ingress-nginx + cert-manager, with nginx annotations
+  derived from the runtime contract.
+- **ServiceMonitor** *(optional, on by default — M6)*: a `monitoring:` block wires the
+  `/metrics` port into the kube-prometheus-stack operator (discovered via a `release`
+  label); the Deployment and Service gain a `metrics` port.
+
+No `HorizontalPodAutoscaler` is ever generated — scaling is the job of the user's own
+autoscaler driving the Deployment's scale subresource.
 
 Rendering uses Go `text/template` over a struct (no client-go dependency for the
 render path — keeps the binary tiny). `apply` shells out to `kubectl apply -f -`,
@@ -135,54 +146,81 @@ same Dockerfile works for any function.
 ```
 kfn/
 ├── go.mod
-├── DESIGN.md
+├── DESIGN.md · README.md · CHANGELOG.md
 ├── pkg/
 │   └── runtime/
-│       ├── runtime.go      # Start(), config, server wiring
-│       ├── request.go      # Request/Response types + helpers
-│       ├── middleware.go   # recovery, timeout, concurrency, logging
+│       ├── runtime.go      # Start(), server wiring, the invocation mux
+│       ├── config.go       # env-sourced config + parsing helpers
+│       ├── request.go      # Request/Response types + Text/JSON/Bytes/HTTPError
+│       ├── middleware.go   # recovery, timeout, concurrency limiting
+│       ├── logging.go      # structured access log + statusRecorder
+│       ├── metrics.go      # Prometheus registry, instrumentation, /metrics handler
+│       ├── requestid.go    # X-Request-Id propagation + RequestID(ctx)
 │       └── health.go       # liveness/readiness state + graceful shutdown
 ├── cmd/
 │   └── kfn/
-│       ├── main.go         # CLI: render / apply
-│       └── render.go       # function.yaml → manifest templates
+│       ├── main.go         # CLI entrypoint + version
+│       ├── render.go       # render: function.yaml → manifests
+│       ├── apply.go        # apply: render then `kubectl apply -f -`
+│       ├── build.go        # build: image from build/Dockerfile
+│       ├── push.go         # push: image to its registry
+│       └── engine.go       # container-engine detection (docker/podman)
 ├── internal/
 │   └── manifest/
-│       ├── manifest.go     # metadata struct, defaults, validation
-│       └── templates/      # deployment.yaml.tmpl, service.yaml.tmpl
+│       ├── manifest.go     # FunctionSpec, defaults, validation, Render
+│       └── templates/      # deployment / service / ingress / servicemonitor .yaml.tmpl
 ├── examples/
 │   └── hello/
 │       ├── main.go
 │       └── function.yaml
+├── docs/
+│   └── git-workflow.md
 └── build/
     └── Dockerfile
 ```
 
-## 7. Build order (milestones)
+## 7. Build order
 
-1. **M1 — Runtime core.** `pkg/runtime`: types, `Start()`, routing, config from env,
-   logging. Outcome: `examples/hello` runs locally, `curl localhost:8080` works.
-2. **M2 — Operational hardening.** Timeouts, panic recovery, concurrency limit,
-   readiness-gated graceful shutdown. Outcome: SIGTERM drains cleanly; tests cover it.
-3. **M3 — Manifest generator.** `internal/manifest` + `cmd/kfn render`. Outcome:
-   `function.yaml` → valid Deployment+Service YAML (validated with `kubectl --dry-run`).
-4. **M4 — Apply + image.** ✅ `kfn build`/`push`, the reference Dockerfile, and a
-   first end-to-end run on the cluster (function on `role=workload` nodes, scaled by hand).
-5. **M5 — Ingress + TLS.** ✅ Optional `ingress:` block → an `Ingress` exposing
+All of the following have shipped (releases v0.1.0–v0.7.0):
+
+1. **Runtime core** — `pkg/runtime`: types, `Start()`, routing, config from env, logging.
+2. **Operational hardening** — per-invocation timeouts, panic recovery, concurrency limit,
+   readiness-gated graceful shutdown.
+3. **Manifest generator** — `internal/manifest` + `cmd/kfn render`: `function.yaml` → a
+   valid Deployment + Service.
+4. **Apply + image** — `kfn build`/`push`, the reference Dockerfile, end-to-end on the
+   cluster (functions on `role=workload` nodes, scaled by hand).
+5. **Ingress + TLS** — optional `ingress:` block → an `Ingress` exposing
    `https://<name>.kfn.lan` via ingress-nginx + cert-manager (`cm-lab-ca`).
-6. **M6 — Observability.** ✅ Prometheus `/metrics` on a dedicated port, per-function
-   metrics + ServiceMonitor (operator-discovered via `release` label), request-id
-   propagation. Outcome: per-function scrape signals for a custom autoscaler.
+6. **Observability** — Prometheus `/metrics` on a dedicated port, per-function metrics +
+   ServiceMonitor (operator-discovered via the `release` label), request-id propagation.
+7. **Load-generator examples** — runnable functions that generate controllable load to
+   exercise the runtime and the upcoming autoscaler: `sleep` (latency / concurrency) and
+   `cpu` (CPU burn), with `ram` and `mixed` planned.
 
-## 8. Key decisions to confirm
+Next: the autoscaler (§9).
 
-- **Module path**: I assumed `github.com/ParhamCh/kfn`. What should it be?
-- **Trigger route**: `POST /` vs `POST /invoke`. I lean `/` (simpler) with health on
-  subpaths.
-- **Metrics**: Prometheus client (`/metrics`) now, or defer to M5?
-- **`apply` strategy**: shell out to `kubectl` (assumed) keeps deps minimal; the
-  alternative is client-go server-side apply if you'd rather not depend on a kubectl
-  binary being present.
+## 8. Key decisions (resolved)
+
+- **Module path**: `github.com/ParhamCh/kfn` (renamed from `loadgen-go` at v0.2.0, since
+  that name implied a load generator).
+- **Trigger route**: the catch-all `/` handles every method (the handler reads
+  `req.Method`); `/healthz` and `/readyz` are reserved on subpaths.
+- **Metrics**: Prometheus client (`prometheus/client_golang`), landed in M6 on a
+  dedicated port rather than the function port — kept off the public Ingress.
+- **`apply` strategy**: shell out to `kubectl apply -f -` (streaming rendered YAML to
+  stdin). Keeps the binary free of client-go; the trade-off is a `kubectl` dependency on
+  the operator's machine. Note `apply` never prunes — disabling a previously-applied
+  `ingress:`/`monitoring:` block leaves the old object behind; delete it explicitly.
+
+## 9. Next: the autoscaler
+
+With per-function scrape signals in place (M6), the next unit is the user's own
+**autoscaler**: a Go control loop that reads a per-function signal from Prometheus
+(e.g. `kfn_in_flight_requests` or `rate(kfn_requests_total[1m])`) and sets each
+Deployment's `.spec.replicas` through the scale subresource. HPA/KEDA are deliberately
+not used — this is the platform's own scaling brain.
 
 ---
-*Next step: confirm the four decisions in §8, then I start M1.*
+*Status: the runtime, CLI, ingress/TLS, observability and load-generator examples have
+shipped (latest v0.7.0). Next: the autoscaler (§9).*

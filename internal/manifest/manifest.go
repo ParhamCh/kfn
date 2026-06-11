@@ -1,9 +1,9 @@
 // Package manifest turns a function's function.yaml into the Kubernetes objects that
-// deploy it: one Deployment and one Service per function, plus an optional Ingress
-// (with cert-manager TLS) when the function opts into being exposed. Rendering is done
-// with text/template over a typed spec (no client-go), so the output is plain, auditable
-// YAML. A ServiceMonitor is intentionally not emitted yet — it arrives in M6 alongside
-// the /metrics endpoint it would scrape.
+// deploy it: one Deployment and one Service per function, plus an optional Ingress (with
+// cert-manager TLS) when the function opts into being exposed and a ServiceMonitor (on by
+// default) that wires the /metrics endpoint into the prometheus-operator. Rendering is
+// done with text/template over a typed spec (no client-go), so the output is plain,
+// auditable YAML.
 package manifest
 
 import (
