@@ -179,21 +179,26 @@ kfn/
     └── Dockerfile
 ```
 
-## 7. Build order (milestones)
+## 7. Build order
 
-1. **M1 — Runtime core.** `pkg/runtime`: types, `Start()`, routing, config from env,
-   logging. Outcome: `examples/hello` runs locally, `curl localhost:8080` works.
-2. **M2 — Operational hardening.** Timeouts, panic recovery, concurrency limit,
-   readiness-gated graceful shutdown. Outcome: SIGTERM drains cleanly; tests cover it.
-3. **M3 — Manifest generator.** `internal/manifest` + `cmd/kfn render`. Outcome:
-   `function.yaml` → valid Deployment+Service YAML (validated with `kubectl --dry-run`).
-4. **M4 — Apply + image.** ✅ `kfn build`/`push`, the reference Dockerfile, and a
-   first end-to-end run on the cluster (function on `role=workload` nodes, scaled by hand).
-5. **M5 — Ingress + TLS.** ✅ Optional `ingress:` block → an `Ingress` exposing
+All of the following have shipped (releases v0.1.0–v0.7.0):
+
+1. **Runtime core** — `pkg/runtime`: types, `Start()`, routing, config from env, logging.
+2. **Operational hardening** — per-invocation timeouts, panic recovery, concurrency limit,
+   readiness-gated graceful shutdown.
+3. **Manifest generator** — `internal/manifest` + `cmd/kfn render`: `function.yaml` → a
+   valid Deployment + Service.
+4. **Apply + image** — `kfn build`/`push`, the reference Dockerfile, end-to-end on the
+   cluster (functions on `role=workload` nodes, scaled by hand).
+5. **Ingress + TLS** — optional `ingress:` block → an `Ingress` exposing
    `https://<name>.kfn.lan` via ingress-nginx + cert-manager (`cm-lab-ca`).
-6. **M6 — Observability.** ✅ Prometheus `/metrics` on a dedicated port, per-function
-   metrics + ServiceMonitor (operator-discovered via `release` label), request-id
-   propagation. Outcome: per-function scrape signals for a custom autoscaler.
+6. **Observability** — Prometheus `/metrics` on a dedicated port, per-function metrics +
+   ServiceMonitor (operator-discovered via the `release` label), request-id propagation.
+7. **Load-generator examples** — runnable functions that generate controllable load to
+   exercise the runtime and the upcoming autoscaler: `sleep` (latency / concurrency) and
+   `cpu` (CPU burn), with `ram` and `mixed` planned.
+
+Next: the autoscaler (§9).
 
 ## 8. Key decisions (resolved)
 
@@ -217,4 +222,5 @@ Deployment's `.spec.replicas` through the scale subresource. HPA/KEDA are delibe
 not used — this is the platform's own scaling brain.
 
 ---
-*Status: M1–M6 shipped (v0.6.0). Next milestone: the autoscaler (§9).*
+*Status: the runtime, CLI, ingress/TLS, observability and load-generator examples have
+shipped (latest v0.7.0). Next: the autoscaler (§9).*

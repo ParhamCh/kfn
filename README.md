@@ -4,11 +4,11 @@ A lightweight **function runtime** for Kubernetes: import the runtime, register 
 handler, and your function becomes a hardened, long-lived HTTP service ready to run as
 a pod. A companion CLI builds the image and generates the Kubernetes manifests to deploy it.
 
-> Status: **M6 — observability** complete (Prometheus `/metrics`, ServiceMonitor,
-> request-id). With the runtime (M1–M2), manifest generator (M3), image build/deploy
-> (M4) and ingress/TLS (M5) in place, functions now emit per-function scrape signals —
-> the input for a custom autoscaler. See [`DESIGN.md`](DESIGN.md) for the full design and
-> milestone plan.
+> **Status:** the runtime, the `kfn` CLI (build / render / apply), ingress + TLS exposure
+> and Prometheus observability are all in place, and a growing set of load-generator
+> examples (`examples/sleep`, `examples/cpu`) exercises it. Functions emit per-function
+> scrape signals — the input for the next piece, a custom autoscaler. See
+> [`DESIGN.md`](DESIGN.md) for the design.
 
 ## The contract
 
