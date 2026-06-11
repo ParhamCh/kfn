@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- **Load-generator examples** — runnable kfn functions that deliberately generate a chosen
+  kind of load, to exercise the runtime and (eventually) the per-function autoscaler:
+  - `sleep` (`examples/sleep`): holds each request open for a configurable, optionally
+    jittered duration without burning CPU — a pure in-flight-concurrency generator with
+    `fixed`/`uniform`/`exp` latency distributions, cooperative cancellation, and a hard
+    `SLEEP_MAX` cap. Drives `kfn_in_flight_requests` and the latency histogram. (`cpu`,
+    `ram` and `mixed` to follow.)
+
 ## [0.6.0] - 2026-06-09
 
 ### Added
