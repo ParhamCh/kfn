@@ -6,16 +6,29 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-06-11
+
 ### Added
-- **Load-generator examples** — runnable kfn functions that deliberately generate a chosen
-  kind of load, to exercise the runtime and (eventually) the per-function autoscaler:
+- **Load-generator examples** (`examples/`) — runnable kfn functions that deliberately
+  generate a chosen kind of load, to exercise the runtime and (eventually) the
+  per-function autoscaler:
   - `sleep` (`examples/sleep`): holds each request open for a configurable, optionally
     jittered duration without burning CPU — a pure in-flight-concurrency generator with
     `fixed`/`uniform`/`exp` latency distributions, cooperative cancellation, and a hard
     `SLEEP_MAX` cap. Drives `kfn_in_flight_requests` and the latency histogram.
   - `cpu` (`examples/cpu`): burns CPU for a configurable window across N workers, optionally
     at a fractional duty cycle (`load`), via a tight SHA-256 loop. Reports throughput and
-    drives `process_cpu_seconds_total`. (`ram` and `mixed` to follow.)
+    drives `process_cpu_seconds_total`. Sized small (100m/500m) for modest nodes.
+  - Both are exposed via ingress + cert-manager TLS at `https://load-<name>.kfn.lan`.
+    (`ram` and `mixed` to follow.)
+- Detailed usage guides under `docs/` — writing functions, the `function.yaml` reference,
+  the `kfn` CLI, deploying end to end, and observability — linked from the README.
+
+### Changed
+- The reference `examples/hello` and `examples/sleep` manifests were harmonized into
+  consistent sibling shapes (both exposed via ingress/TLS).
+- README status is now a plain capability summary instead of internal milestone (M1–M6)
+  language; `DESIGN.md` was refreshed to match the shipped runtime, CLI and examples suite.
 
 ## [0.6.0] - 2026-06-09
 
@@ -128,7 +141,8 @@ All notable changes to this project are documented here. The format is based on
 - Structured JSON access logging (one line per invocation).
 - `examples/hello` reference function and accompanying `function.yaml`.
 
-[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/ParhamCh/kfn/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ParhamCh/kfn/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ParhamCh/kfn/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ParhamCh/kfn/compare/v0.3.0...v0.4.0
