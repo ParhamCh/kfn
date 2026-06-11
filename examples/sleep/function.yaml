@@ -1,22 +1,45 @@
-# Load generator: latency / in-flight concurrency.
-# Build:  kfn build -f examples/sleep/function.yaml --func ./examples/sleep
-# Deploy: kfn apply -f examples/sleep/function.yaml
+# load-sleep — a load generator that holds each request open for a configurable,
+# optionally jittered duration (no CPU). Drive it to exercise concurrency + the autoscaler.
+# Build & deploy:
+#   kfn build -f examples/sleep/function.yaml --func ./examples/sleep
+#   kfn push  -f examples/sleep/function.yaml
+#   kfn apply -f examples/sleep/function.yaml
 name: load-sleep
 image: harbor.lan/kfn/load-sleep:0.1.0
+port: 8080            # default 8080
 replicas: 1
 resources:
   # Sleeping is idle work — keep the footprint tiny.
-  requests: { cpu: 25m, memory: 32Mi }
-  limits:   { cpu: 100m, memory: 64Mi }
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
 env:
-  # Per-request query params override these defaults.
-  - { name: SLEEP_DEFAULT, value: 200ms }
-  - { name: SLEEP_MAX,     value: 60s }
-  # Allow long sleeps without the runtime cutting them off with a 504.
-  # Must sit above SLEEP_MAX (which is the longest a single request can sleep).
-  - { name: INVOKE_TIMEOUT, value: 90s }
-  # Uncomment to demonstrate load shedding: the Nth+1 concurrent request gets a 429.
-  # - { name: MAX_CONCURRENCY, value: "10" }
-# Metrics are on by default. The signals this function drives:
+  # Per-request query params (?duration=, ?dist=, ?jitter=) override these defaults.
+  - name: SLEEP_DEFAULT
+    value: 200ms
+  - name: SLEEP_MAX
+    value: 60s
+  # Keep INVOKE_TIMEOUT above SLEEP_MAX so long sleeps aren't cut short with a 504.
+  - name: INVOKE_TIMEOUT
+    value: 90s
+  # Uncomment to demo load shedding: the (N+1)th concurrent request gets a 429.
+  # - name: MAX_CONCURRENCY
+  #   value: "10"
+# Expose at https://load-sleep.kfn.lan so load can be driven from outside the cluster,
+# e.g. curl 'https://load-sleep.kfn.lan/?duration=2s&dist=exp'.
+ingress:
+  enabled: true
+  host: load-sleep.kfn.lan   # default <name>.kfn.lan
+  tls: true                  # cert-manager issues a cert into <name>-tls
+  # clusterIssuer: cm-lab-ca   (default)
+  # className: nginx           (default)
+# Prometheus metrics are on by default (/metrics on :9090 + a ServiceMonitor).
+# Signals this generator drives:
 #   kfn_in_flight_requests        — live concurrency (the direct scale signal)
-#   kfn_request_duration_seconds  — the latency you dialed in
+#   kfn_request_duration_seconds  — the latency distribution you dialed in
+# monitoring:
+#   enabled: true            (default; false drops the metrics port + ServiceMonitor)
+#   releaseLabel: kps        (default; the label the prometheus-operator selects on)

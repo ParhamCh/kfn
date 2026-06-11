@@ -73,6 +73,13 @@ kfn push  -f examples/sleep/function.yaml
 kfn apply -f examples/sleep/function.yaml
 ```
 
+The shipped `function.yaml` exposes it at `https://load-sleep.kfn.lan` (point that host at
+your ingress-nginx LoadBalancer IP). Drive load from outside the cluster:
+
+```bash
+curl -sk 'https://load-sleep.kfn.lan/?duration=2s&dist=exp'
+```
+
 ## Signals it drives
 
 | Metric | What it shows |
