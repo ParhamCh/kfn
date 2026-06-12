@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-06-12
+
 ### Added
 - `ram` load-generator example (`examples/ram`): allocates and holds resident memory (with
   an optional `ramp` for slow-leak emulation), then releases it — driving
@@ -152,7 +154,8 @@ All notable changes to this project are documented here. The format is based on
 - Structured JSON access logging (one line per invocation).
 - `examples/hello` reference function and accompanying `function.yaml`.
 
-[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/ParhamCh/kfn/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/ParhamCh/kfn/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ParhamCh/kfn/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ParhamCh/kfn/compare/v0.4.0...v0.5.0
