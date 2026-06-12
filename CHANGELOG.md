@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+- The load-generator manifests (`sleep`, `cpu`, `ram`) now set `monitoring.interval: 10s`
+  (was the 30s default) so load shows up promptly in real-time dashboards — and the
+  setting survives `kfn apply`.
+
 ## [0.8.0] - 2026-06-12
 
 ### Added
