@@ -44,6 +44,7 @@ ingress:
 # Prometheus metrics are on by default (/metrics on :9090 + a ServiceMonitor).
 # Signal this generator drives:
 #   process_resident_memory_bytes — container memory (watch it rise during a hold, fall after)
-# monitoring:
-#   enabled: true            (default; false drops the metrics port + ServiceMonitor)
-#   releaseLabel: kps        (default; the label the prometheus-operator selects on)
+monitoring:
+  interval: 10s              # scrape fast so load shows up in dashboards promptly (default 30s)
+  # enabled: true            (default; false drops the metrics port + ServiceMonitor)
+  # releaseLabel: kps        (default; the label the prometheus-operator selects on)

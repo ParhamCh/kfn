@@ -40,6 +40,7 @@ ingress:
 # Signals this generator drives:
 #   kfn_in_flight_requests        — live concurrency (the direct scale signal)
 #   kfn_request_duration_seconds  — the latency distribution you dialed in
-# monitoring:
-#   enabled: true            (default; false drops the metrics port + ServiceMonitor)
-#   releaseLabel: kps        (default; the label the prometheus-operator selects on)
+monitoring:
+  interval: 10s              # scrape fast so load shows up in dashboards promptly (default 30s)
+  # enabled: true            (default; false drops the metrics port + ServiceMonitor)
+  # releaseLabel: kps        (default; the label the prometheus-operator selects on)
