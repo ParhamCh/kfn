@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-06-12
+
+### Added
+- `ram` load-generator example (`examples/ram`): allocates and holds resident memory (with
+  an optional `ramp` for slow-leak emulation), then releases it — driving
+  `process_resident_memory_bytes`. Safe by default (allocation hard-capped below the pod
+  limit, `MAX_CONCURRENCY=1`) so it never OOM-kills the pod; OOM testing is opt-in. The
+  shipped manifest allows long experiments (`RAM_MAX_HOLD: 180s`, `RAM_MAX_RAMP: 120s`,
+  `INVOKE_TIMEOUT: 320s`).
+- Minimal real-time Grafana dashboard (`docs/grafana/kfn-load-dashboard.json`) for the
+  load functions: in-flight concurrency, request rate by code, CPU, memory RSS, p95
+  latency and pods-scraped, at 5s refresh.
+
 ## [0.7.0] - 2026-06-11
 
 ### Added
@@ -141,7 +154,8 @@ All notable changes to this project are documented here. The format is based on
 - Structured JSON access logging (one line per invocation).
 - `examples/hello` reference function and accompanying `function.yaml`.
 
-[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/ParhamCh/kfn/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/ParhamCh/kfn/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ParhamCh/kfn/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ParhamCh/kfn/compare/v0.4.0...v0.5.0

@@ -105,7 +105,22 @@ for i in $(seq 20); do curl -s 'localhost:8080/?duration=2s' >/dev/null & done
 sum(rate(process_cpu_seconds_total{function="load-cpu"}[1m]))
 ```
 
-(A `ram` generator to drive `process_resident_memory_bytes` is planned.)
+[`examples/ram`](../examples/ram) allocates and holds resident memory to drive
+`process_resident_memory_bytes` (rising during a hold, falling after release):
+
+```bash
+# resident memory of the ram generator, in MiB
+process_resident_memory_bytes{function="load-ram"} / 1024 / 1024
+```
+
+### Real-time dashboard
+
+[`grafana/kfn-load-dashboard.json`](grafana/kfn-load-dashboard.json) is a minimal Grafana
+dashboard for watching the load functions live (5s refresh, 15-minute window): in-flight
+concurrency, request rate by status code, CPU cores, memory RSS, p95 latency, and pods
+scraped per function. Import it via *Dashboards → New → Import → Upload JSON file*. Note
+that data still advances at the ServiceMonitor scrape interval (30s by default; set
+`monitoring.interval` lower for snappier graphs).
 
 ## PromQL recipes
 
