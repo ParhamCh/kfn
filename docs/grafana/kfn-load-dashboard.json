@@ -1,0 +1,123 @@
+{
+  "title": "kfn — load functions (real-time)",
+  "tags": ["kfn"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "Data source",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {}
+      },
+      {
+        "name": "function",
+        "label": "Function",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "$datasource" },
+        "definition": "label_values(kfn_in_flight_requests, function)",
+        "query": { "query": "label_values(kfn_in_flight_requests, function)", "refId": "fnvar" },
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "current": { "selected": true, "text": ["All"], "value": ["$__all"] }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "In-flight requests (live concurrency)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "$datasource" },
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0 }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (function) (kfn_in_flight_requests{function=~\"$function\"})",
+          "legendFormat": "{{function}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Request rate by status code",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "$datasource" },
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "min": 0 }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (function, code) (rate(kfn_requests_total{function=~\"$function\"}[$__rate_interval]))",
+          "legendFormat": "{{function}} {{code}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "CPU (cores)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "$datasource" },
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 2, "min": 0 }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (function) (rate(process_cpu_seconds_total{function=~\"$function\"}[$__rate_interval]))",
+          "legendFormat": "{{function}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Memory RSS",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "$datasource" },
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "min": 0 }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (function) (process_resident_memory_bytes{function=~\"$function\"})",
+          "legendFormat": "{{function}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "p95 latency",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "$datasource" },
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0 }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (function, le) (rate(kfn_request_duration_seconds_bucket{function=~\"$function\"}[$__rate_interval])))",
+          "legendFormat": "{{function}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Pods scraped (replicas)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "$datasource" },
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "decimals": 0 }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count by (function) (kfn_in_flight_requests{function=~\"$function\"})",
+          "legendFormat": "{{function}}"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+# load-ram — a load generator that allocates and holds resident memory, then releases it.
+# Drive it to exercise memory pressure and the autoscaler's memory signal.
+# Build & deploy:
+#   kfn build -f examples/ram/function.yaml --func ./examples/ram
+#   kfn push  -f examples/ram/function.yaml
+#   kfn apply -f examples/ram/function.yaml
+name: load-ram
+image: harbor.lan/kfn/load-ram:0.1.0
+port: 8080            # default 8080
+replicas: 1
+resources:
+  # Sized small for modest nodes. RAM_MAX_MB (160) sits below this 256Mi limit, so a
+  # single request can never OOM-kill the pod.
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 256Mi
+env:
+  # Per-request query params (?mb=, ?hold=, ?ramp=) override these defaults.
+  - name: RAM_DEFAULT_MB
+    value: "64"
+  - name: RAM_MAX_MB
+    value: "160"
+  - name: RAM_MAX_HOLD
+    value: 180s
+  - name: RAM_MAX_RAMP
+    value: 120s
+  # Keep INVOKE_TIMEOUT above the longest possible request (ramp + hold = up to 300s).
+  - name: INVOKE_TIMEOUT
+    value: 320s
+  # Serialize allocations so concurrent requests can't sum into an OOM.
+  - name: MAX_CONCURRENCY
+    value: "1"
+# Expose at https://load-ram.kfn.lan so load can be driven from outside the cluster,
+# e.g. curl 'https://load-ram.kfn.lan/?mb=128&hold=10s'.
+ingress:
+  enabled: true
+  host: load-ram.kfn.lan     # default <name>.kfn.lan
+  tls: true                  # cert-manager issues a cert into <name>-tls
+  # clusterIssuer: cm-lab-ca   (default)
+  # className: nginx           (default)
+# Prometheus metrics are on by default (/metrics on :9090 + a ServiceMonitor).
+# Signal this generator drives:
+#   process_resident_memory_bytes — container memory (watch it rise during a hold, fall after)
+# monitoring:
+#   enabled: true            (default; false drops the metrics port + ServiceMonitor)
+#   releaseLabel: kps        (default; the label the prometheus-operator selects on)

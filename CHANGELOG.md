@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- `ram` load-generator example (`examples/ram`): allocates and holds resident memory (with
+  an optional `ramp` for slow-leak emulation), then releases it — driving
+  `process_resident_memory_bytes`. Safe by default (allocation hard-capped below the pod
+  limit, `MAX_CONCURRENCY=1`) so it never OOM-kills the pod; OOM testing is opt-in. The
+  shipped manifest allows long experiments (`RAM_MAX_HOLD: 180s`, `RAM_MAX_RAMP: 120s`,
+  `INVOKE_TIMEOUT: 320s`).
+- Minimal real-time Grafana dashboard (`docs/grafana/kfn-load-dashboard.json`) for the
+  load functions: in-flight concurrency, request rate by code, CPU, memory RSS, p95
+  latency and pods-scraped, at 5s refresh.
+
 ## [0.7.0] - 2026-06-11
 
 ### Added
