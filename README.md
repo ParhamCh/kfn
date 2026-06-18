@@ -209,6 +209,7 @@ This README is the overview. The detailed usage guides live in [`docs/`](docs/):
 | [`kfn` CLI reference](docs/cli.md) | `render` / `build` / `push` / `apply` / `version`, all flags, stdin, engine selection. |
 | [Deploying end to end](docs/deploying.md) | Source → build → push → apply → expose → scale → observe, with troubleshooting. |
 | [Observability](docs/observability.md) | Metrics reference, ServiceMonitor wiring, PromQL recipes, request-id tracing. |
+| [Examples](examples/README.md) | The load-generator suite — `sleep`, `cpu`, `ram`, `mixed` — and what each one drives. |
 
 ## Contributing & releases
 
