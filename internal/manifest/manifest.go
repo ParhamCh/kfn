@@ -159,11 +159,14 @@ func (s *FunctionSpec) applyDefaults() {
 func (s *FunctionSpec) applyMonitoringDefaults() {
 	m := &s.Monitoring
 	m.On = m.Enabled == nil || *m.Enabled
-	if !m.On {
-		return
-	}
+	// The runtime always serves /metrics on this port; monitoring.enabled only controls
+	// whether it is exposed (a container/Service port) and scraped (a ServiceMonitor). So the
+	// port is always resolved and validated, even when scraping is off.
 	if m.Port == 0 {
 		m.Port = 9090
+	}
+	if !m.On {
+		return
 	}
 	if m.Path == "" {
 		m.Path = "/metrics"
@@ -256,13 +259,13 @@ func (s *FunctionSpec) validate() error {
 			return fmt.Errorf("manifest: ingress.clusterIssuer is required when tls is enabled")
 		}
 	}
-	if s.Monitoring.On {
-		if s.Monitoring.Port < 1 || s.Monitoring.Port > 65535 {
-			return fmt.Errorf("manifest: monitoring.port %d out of range 1-65535", s.Monitoring.Port)
-		}
-		if s.Monitoring.Port == s.Port {
-			return fmt.Errorf("manifest: monitoring.port %d must differ from the function port", s.Monitoring.Port)
-		}
+	// The runtime always binds the metrics port, so it must be valid and differ from the
+	// function port whether or not scraping is enabled.
+	if s.Monitoring.Port < 1 || s.Monitoring.Port > 65535 {
+		return fmt.Errorf("manifest: monitoring.port %d out of range 1-65535", s.Monitoring.Port)
+	}
+	if s.Monitoring.Port == s.Port {
+		return fmt.Errorf("manifest: monitoring.port %d must differ from the function port", s.Monitoring.Port)
 	}
 	return nil
 }
