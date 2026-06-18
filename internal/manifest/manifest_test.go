@@ -128,16 +128,21 @@ func TestRenderProducesDeploymentAndService(t *testing.T) {
 	}
 	container := mp(t, sl(t, podSpec["containers"])[0])
 
-	// FUNCTION_NAME must be injected from the function name.
-	var gotFnName string
+	// The env the runtime needs must be injected. PORT in particular must match the
+	// container port, or the runtime would listen on its default while the Service and
+	// probes target a different port.
+	env := map[string]string{}
 	for _, e := range sl(t, container["env"]) {
 		em := mp(t, e)
-		if em["name"] == "FUNCTION_NAME" {
-			gotFnName, _ = em["value"].(string)
-		}
+		name, _ := em["name"].(string)
+		val, _ := em["value"].(string)
+		env[name] = val
 	}
-	if gotFnName != "hello" {
-		t.Errorf("FUNCTION_NAME env = %q, want hello", gotFnName)
+	if env["FUNCTION_NAME"] != "hello" {
+		t.Errorf("FUNCTION_NAME env = %q, want hello", env["FUNCTION_NAME"])
+	}
+	if env["PORT"] != "9000" {
+		t.Errorf("PORT env = %q, want 9000 (must match containerPort)", env["PORT"])
 	}
 
 	// Probes point at the runtime's endpoints.
