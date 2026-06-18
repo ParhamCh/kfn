@@ -9,14 +9,14 @@ silently ignored.
 
 ```yaml
 name: hello
-image: harbor.lan/kfn/hello:0.2.0
+image: harbor.lan/kfn/hello:0.2.1
 ```
 
 ## Full example
 
 ```yaml
 name: hello                       # required — DNS-1123 label
-image: harbor.lan/kfn/hello:0.2.0 # required — full registry reference + tag
+image: harbor.lan/kfn/hello:0.2.1 # required — full registry reference + tag
 port: 8080                        # default 8080
 replicas: 2                       # default 1
 namespace: kfn                    # default kfn
@@ -44,7 +44,7 @@ monitoring:
 | Field | Type | Default | Notes |
 |-------|------|---------|-------|
 | `name` | string | — **required** | Object name; must be a valid DNS-1123 label (`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`). Injected into the pod as `FUNCTION_NAME`. |
-| `image` | string | — **required** | Full image reference incl. registry and tag, e.g. `harbor.lan/kfn/hello:0.2.0`. Used by `build`/`push`/the Deployment. |
+| `image` | string | — **required** | Full image reference incl. registry and tag, e.g. `harbor.lan/kfn/hello:0.2.1`. Used by `build`/`push`/the Deployment. |
 | `port` | int | `8080` | Function listen port. Must be `1–65535`. Injected as `PORT`. |
 | `replicas` | int | `1` | Initial replica count. Must be `>= 0`. No HPA is created — your autoscaler (or `kubectl scale`) drives it afterward. |
 | `namespace` | string | `kfn` | Target namespace. `apply` creates it if missing; `-n` overrides this. |
@@ -142,4 +142,6 @@ See [observability.md](observability.md) for the metrics themselves and PromQL r
 - the file contains an **unknown key**.
 - `ingress.enabled` and: `host` isn't a valid DNS subdomain; `className` is empty; or
   `tls` is on but `clusterIssuer` is empty.
-- monitoring is on and: `port` is outside `1–65535`; or `port` equals the function `port`.
+- the metrics port (`monitoring.port`, default `9090`) is outside `1–65535`, or equals the
+  function `port` — checked **even when `monitoring.enabled: false`**, since the runtime
+  always serves `/metrics` on it.

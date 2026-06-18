@@ -222,5 +222,6 @@ Deployment's `.spec.replicas` through the scale subresource. HPA/KEDA are delibe
 not used — this is the platform's own scaling brain.
 
 ---
-*Status: the runtime, CLI, ingress/TLS, observability and load-generator examples have
-shipped (latest v0.7.0). Next: the autoscaler (§9).*
+*Status: **v1.0.0 — stable**. The runtime, CLI, ingress/TLS, observability and the full
+load-generator example suite have shipped, and the `pkg/runtime` API is stable. Next: the
+autoscaler (§9).*
