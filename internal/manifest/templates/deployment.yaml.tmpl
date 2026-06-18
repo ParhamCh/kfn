@@ -39,6 +39,8 @@ spec:
           env:
             - name: FUNCTION_NAME
               value: {{ .Name | quote }}
+            - name: PORT
+              value: "{{ .Port }}"
             - name: SHUTDOWN_GRACE
               value: {{ .ShutdownGrace | quote }}
 {{- if .Monitoring.On }}

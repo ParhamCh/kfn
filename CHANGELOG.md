@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+- The generated Deployment now injects a `PORT` env var matching `function.yaml`'s `port`,
+  so a function configured with a non-default port actually listens where the Service and
+  probes target it (previously it kept listening on the runtime default `8080`, which only
+  worked because every example used `8080`).
+
 ## [0.9.0] - 2026-06-12
 
 ### Added
