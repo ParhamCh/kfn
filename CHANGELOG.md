@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-12
+
+First **stable** release. The function runtime (`pkg/runtime`), the `kfn` CLI,
+ingress/TLS exposure, Prometheus observability and the full load-generator example
+suite (`sleep`, `cpu`, `ram`, `mixed`) are all in place, and the runtime's public API
+is now stable under Semantic Versioning.
+
+### Added
+- MIT `LICENSE`.
+
+### Changed
+- Documentation polished for the 1.0 milestone: README gains badges, a stable-status line
+  and a **License** section; the `pkg/runtime` API is documented as stable under SemVer; the
+  `function.yaml` reference's metrics-port validation note was corrected (it's checked even
+  when monitoring is disabled), and example image tags in the docs were synced.
+
 ## [0.9.2] - 2026-06-12
 
 ### Changed
@@ -194,7 +210,8 @@ All notable changes to this project are documented here. The format is based on
 - Structured JSON access logging (one line per invocation).
 - `examples/hello` reference function and accompanying `function.yaml`.
 
-[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/ParhamCh/kfn/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/ParhamCh/kfn/compare/v0.9.2...v1.0.0
 [0.9.2]: https://github.com/ParhamCh/kfn/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/ParhamCh/kfn/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/ParhamCh/kfn/compare/v0.8.0...v0.9.0

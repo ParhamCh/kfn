@@ -93,7 +93,7 @@ Push the built image to the registry named in `image:`.
 
 ```bash
 docker login harbor.lan                         # one-time, per registry
-bin/kfn push -f examples/hello/function.yaml     # → docker push harbor.lan/kfn/hello:0.2.0
+bin/kfn push -f examples/hello/function.yaml     # → docker push harbor.lan/kfn/hello:0.2.1
 ```
 
 > **Tag caching gotcha.** Nodes pull by tag under the default `imagePullPolicy:

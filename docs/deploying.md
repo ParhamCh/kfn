@@ -19,7 +19,7 @@ See [writing-functions.md](writing-functions.md) for the handler, and
 ```yaml
 # examples/hello/function.yaml
 name: hello
-image: harbor.lan/kfn/hello:0.2.0
+image: harbor.lan/kfn/hello:0.2.1
 replicas: 2
 ingress:
   enabled: true
@@ -50,7 +50,7 @@ bin/kfn render -f examples/hello/function.yaml | kubectl apply --dry-run=server 
 ```bash
 docker login harbor.lan                                            # one-time per registry
 bin/kfn build -f examples/hello/function.yaml --func ./examples/hello
-bin/kfn push  -f examples/hello/function.yaml                      # → harbor.lan/kfn/hello:0.2.0
+bin/kfn push  -f examples/hello/function.yaml                      # → harbor.lan/kfn/hello:0.2.1
 ```
 
 The image tag comes from `image:` in `function.yaml`. **Bump that tag for every change you
