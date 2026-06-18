@@ -113,6 +113,15 @@ sum(rate(process_cpu_seconds_total{function="load-cpu"}[1m]))
 process_resident_memory_bytes{function="load-ram"} / 1024 / 1024
 ```
 
+[`examples/mixed`](../examples/mixed) accepts the union of the sleep/cpu/ram params and runs
+them concurrently, so one call drives **all three** signals at once — the multi-dimensional
+load an autoscaler must cope with. It takes a query string or a JSON file (POST body):
+
+```bash
+curl -sk 'https://load-mixed.kfn.lan/?cpu=2s&workers=2&mb=64&sleep=500ms'
+curl -sk --data-binary @load.json https://load-mixed.kfn.lan/
+```
+
 ### Real-time dashboard
 
 [`grafana/kfn-load-dashboard.json`](grafana/kfn-load-dashboard.json) is a minimal Grafana

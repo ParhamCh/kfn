@@ -6,6 +6,23 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-06-12
+
+### Added
+- `mixed` load-generator example (`examples/mixed`): an all-in-one generator that accepts
+  the union of the sleep/cpu/ram parameters and runs all of those loads **concurrently** in
+  one request — driving `process_cpu_seconds_total`, `process_resident_memory_bytes` and
+  `kfn_in_flight_requests` at once. Params come from the query string or a JSON file POSTed
+  as the body. No presets. Defaults to heavy single loads (caps up to `120s` / `200 MiB`,
+  `MAX_CONCURRENCY=1` so one ~200 MiB request fits under the 256Mi limit).
+- An index of the load-generator example suite (`examples/README.md`) mapping each function
+  to the signal it drives.
+
+### Changed
+- The load-generator manifests (`sleep`, `cpu`, `ram`) now set `monitoring.interval: 10s`
+  (was the 30s default) so load shows up promptly in real-time dashboards — and the
+  setting survives `kfn apply`.
+
 ## [0.8.0] - 2026-06-12
 
 ### Added
@@ -154,7 +171,8 @@ All notable changes to this project are documented here. The format is based on
 - Structured JSON access logging (one line per invocation).
 - `examples/hello` reference function and accompanying `function.yaml`.
 
-[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/ParhamCh/kfn/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/ParhamCh/kfn/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/ParhamCh/kfn/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ParhamCh/kfn/compare/v0.5.0...v0.6.0
