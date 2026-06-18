@@ -56,6 +56,9 @@ func TestLoadValidation(t *testing.T) {
 		"bad port":         "name: hello\nimage: x:1\nport: 70000\n",
 		"unknown field":    "name: hello\nimage: x:1\nreplica: 3\n", // typo of replicas
 		"bad ingress host": "name: hello\nimage: x:1\ningress:\n  enabled: true\n  host: Bad_Host\n",
+		// The runtime always binds the metrics port (9090), so the function port must differ
+		// even when scraping is disabled.
+		"metrics port clash off": "name: hello\nimage: x:1\nport: 9090\nmonitoring:\n  enabled: false\n",
 	}
 	for name, yml := range cases {
 		t.Run(name, func(t *testing.T) {

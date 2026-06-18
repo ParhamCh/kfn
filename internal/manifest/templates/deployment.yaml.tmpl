@@ -41,12 +41,10 @@ spec:
               value: {{ .Name | quote }}
             - name: PORT
               value: "{{ .Port }}"
-            - name: SHUTDOWN_GRACE
-              value: {{ .ShutdownGrace | quote }}
-{{- if .Monitoring.On }}
             - name: METRICS_PORT
               value: "{{ .Monitoring.Port }}"
-{{- end }}
+            - name: SHUTDOWN_GRACE
+              value: {{ .ShutdownGrace | quote }}
 {{- range .Env }}
             - name: {{ .Name }}
               value: {{ .Value | quote }}
