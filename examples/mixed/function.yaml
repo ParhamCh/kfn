@@ -1,0 +1,55 @@
+# load-mixed — an all-in-one load generator: accepts every parameter from the sleep, cpu
+# and ram examples and runs all of those loads at once, in a single request.
+# Build & deploy:
+#   kfn build -f examples/mixed/function.yaml --func ./examples/mixed
+#   kfn push  -f examples/mixed/function.yaml
+#   kfn apply -f examples/mixed/function.yaml
+name: load-mixed
+image: harbor.lan/kfn/load-mixed:0.1.0
+port: 8080            # default 8080
+replicas: 1
+resources:
+  # It can do CPU + memory together, and defaults to heavy single loads. MIXED_MAX_MB (200)
+  # with MAX_CONCURRENCY (1) keeps the worst case (one ~200 MiB request) below the 256Mi limit.
+  requests:
+    cpu: 100m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+env:
+  # Per-request params (query string or a JSON POST body) override nothing here — these are
+  # the hard caps each param is clamped to.
+  - name: MIXED_MAX_CPU
+    value: 120s
+  - name: MIXED_MAX_SLEEP
+    value: 120s
+  - name: MIXED_MAX_MB
+    value: "200"
+  - name: MIXED_MAX_HOLD
+    value: 120s
+  - name: MIXED_MAX_RAMP
+    value: 30s
+  # Above the longest possible single request (ramp + max(cpu, sleep, hold) = up to 150s).
+  - name: INVOKE_TIMEOUT
+    value: 180s
+  # One heavy request at a time: a single ~200 MiB allocation fits under the 256Mi limit,
+  # two would not — so serialize. Raise this only if you also raise the memory limit.
+  - name: MAX_CONCURRENCY
+    value: "1"
+# Expose at https://load-mixed.kfn.lan; drive it with a query string or a JSON file:
+#   curl -sk 'https://load-mixed.kfn.lan/?cpu=2s&workers=2&mb=64&sleep=500ms'
+#   curl -sk --data-binary @load.json https://load-mixed.kfn.lan/
+ingress:
+  enabled: true
+  host: load-mixed.kfn.lan   # default <name>.kfn.lan
+  tls: true                  # cert-manager issues a cert into <name>-tls
+  # clusterIssuer: cm-lab-ca   (default)
+  # className: nginx           (default)
+# Prometheus metrics are on by default (/metrics on :9090 + a ServiceMonitor).
+# Drives all three signals at once:
+#   process_cpu_seconds_total · process_resident_memory_bytes · kfn_in_flight_requests
+monitoring:
+  interval: 10s              # scrape fast so load shows up in dashboards promptly (default 30s)
+  # enabled: true            (default; false drops the metrics port + ServiceMonitor)
+  # releaseLabel: kps        (default; the label the prometheus-operator selects on)
