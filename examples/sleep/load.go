@@ -111,9 +111,7 @@ func clampDuration(d, lo, hi time.Duration) time.Duration {
 	return d
 }
 
-func clampFloat(f, lo, hi float64) float64 {
-	return math.Max(lo, math.Min(hi, f))
-}
+func clampFloat(f, lo, hi float64) float64 { return math.Max(lo, math.Min(hi, f)) }
 
 func parseFloat(s string) (float64, error) {
 	return strconv.ParseFloat(s, 64)
