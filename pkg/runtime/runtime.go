@@ -38,12 +38,13 @@ func Start(h Handler) {
 		os.Exit(1)
 	}
 
-	// Bound and protect each invocation. Order matters: recover must run inside the
-	// goroutine withTimeout spawns, so it is the inner wrapper.
-	h = withTimeout(cfg.InvokeTimeout, withRecover(logger, h))
-
 	hc := &health{}
 	mtr := newMetrics(cfg)
+
+	// Bound and protect each invocation. Order matters: recover must run inside the
+	// goroutine withTimeout spawns, so it is the inner wrapper. Recovered panics are
+	// counted via mtr.panics.
+	h = withTimeout(cfg.InvokeTimeout, withRecover(logger, mtr.panics, h))
 	srv := &http.Server{
 		Addr:    ":" + cfg.Port,
 		Handler: newMux(h, hc, mtr, cfg, logger),

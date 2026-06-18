@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -29,8 +30,13 @@ type config struct {
 	InvokeTimeout time.Duration
 	// MaxConcurrency caps simultaneous in-flight invocations per pod; excess requests
 	// get 429 immediately. 0 means unlimited. The 429 rate is a saturation signal a
-	// per-function autoscaler can scale on.
+	// per-function autoscaler can scale on, and the value is exported as kfn_max_concurrency.
 	MaxConcurrency int
+
+	// LatencyBuckets sets the kfn_request_duration_seconds histogram buckets (seconds).
+	// Sourced from METRICS_BUCKETS (comma-separated); empty uses Prometheus default buckets.
+	// Tuning these to the function's real latency profile makes percentiles trustworthy.
+	LatencyBuckets []float64
 }
 
 func loadConfig() config {
@@ -42,7 +48,27 @@ func loadConfig() config {
 		LogLevel:       envLevel("LOG_LEVEL", slog.LevelInfo),
 		InvokeTimeout:  envDuration("INVOKE_TIMEOUT", 30*time.Second),
 		MaxConcurrency: envInt("MAX_CONCURRENCY", 0),
+		LatencyBuckets: envFloats("METRICS_BUCKETS", nil),
 	}
+}
+
+// envFloats parses a comma-separated list of floats (e.g. "0.01,0.05,0.1") from the
+// environment. An empty or malformed value falls back to def.
+func envFloats(key string, def []float64) []float64 {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	var out []float64
+	for p := range strings.SplitSeq(v, ",") {
+		f, err := strconv.ParseFloat(strings.TrimSpace(p), 64)
+		if err != nil {
+			slog.Warn("invalid float in env var, using default", "key", key, "value", v)
+			return def
+		}
+		out = append(out, f)
+	}
+	return out
 }
 
 func envString(key, def string) string {

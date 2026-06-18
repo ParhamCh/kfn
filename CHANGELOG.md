@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- Autoscaling-grade runtime metrics: `kfn_max_concurrency` (the per-pod in-flight ceiling,
+  so saturation = `kfn_in_flight_requests / kfn_max_concurrency` is computable),
+  `kfn_build_info` (constant 1 with `kfn_version`/`go_version` labels), and
+  `kfn_panics_total` (recovered handler panics — a health signal). The
+  `kfn_request_duration_seconds` histogram buckets are now configurable via `METRICS_BUCKETS`
+  for accurate percentiles.
+
 ## [1.0.0] - 2026-06-12
 
 First **stable** release. The function runtime (`pkg/runtime`), the `kfn` CLI,
