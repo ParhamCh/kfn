@@ -1,14 +1,18 @@
 # kfn
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/ParhamCh/kfn.svg)](https://pkg.go.dev/github.com/ParhamCh/kfn)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Go 1.26](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)
+
 A lightweight **function runtime** for Kubernetes: import the runtime, register one
 handler, and your function becomes a hardened, long-lived HTTP service ready to run as
 a pod. A companion CLI builds the image and generates the Kubernetes manifests to deploy it.
 
-> **Status:** the runtime, the `kfn` CLI (build / render / apply), ingress + TLS exposure
-> and Prometheus observability are all in place, and a growing set of load-generator
-> examples (`examples/sleep`, `examples/cpu`) exercises it. Functions emit per-function
-> scrape signals — the input for the next piece, a custom autoscaler. See
-> [`DESIGN.md`](DESIGN.md) for the design.
+> **Status: stable (v1.0.0).** The runtime, the `kfn` CLI (build / render / apply),
+> ingress + TLS exposure, Prometheus observability and a full load-generator example suite
+> (`sleep`, `cpu`, `ram`, `mixed`) are all in place, and the `pkg/runtime` API is stable
+> under SemVer. Functions emit per-function scrape signals — the input for the roadmap's
+> next piece, a custom autoscaler. See [`DESIGN.md`](DESIGN.md) for the design.
 
 ## The contract
 
@@ -215,3 +219,11 @@ This README is the overview. The detailed usage guides live in [`docs/`](docs/):
 
 This repository follows **Git Flow**, **Conventional Commits** and **SemVer**. See
 [`docs/git-workflow.md`](docs/git-workflow.md) before opening a branch.
+
+As of v1.0.0 the `pkg/runtime` API (`Start`, `Handler`, `Request`, `Response`, the `Text`/
+`JSON`/`Bytes` helpers, `HTTPError`/`Errorf`, and `RequestID`) is considered stable;
+breaking changes to it will bump the major version.
+
+## License
+
+kfn is released under the [MIT License](LICENSE).

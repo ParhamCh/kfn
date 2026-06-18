@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- MIT `LICENSE`.
+
+### Changed
+- Documentation polished for the 1.0 milestone: README gains badges, a stable-status line
+  and a **License** section; the `pkg/runtime` API is documented as stable under SemVer; the
+  `function.yaml` reference's metrics-port validation note was corrected (it's checked even
+  when monitoring is disabled), and example image tags in the docs were synced.
+
 ## [0.9.2] - 2026-06-12
 
 ### Changed
