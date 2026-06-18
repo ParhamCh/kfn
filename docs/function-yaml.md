@@ -105,7 +105,12 @@ ingress:
 
 Metrics are **on by default**. When on, the Deployment and Service gain a `metrics` port
 and `kfn` renders a `ServiceMonitor` that the prometheus-operator discovers and scrapes.
-Set `enabled: false` to drop the metrics port and the ServiceMonitor entirely.
+Set `enabled: false` to drop the exposed metrics port and the ServiceMonitor.
+
+> Note: the **runtime always serves `/metrics`** on `METRICS_PORT` regardless of this
+> toggle — `enabled` only controls whether it's *exposed* (a container/Service port) and
+> *scraped* (a ServiceMonitor). So `port` must always differ from the function `port`, and
+> `kfn` validates that even when `enabled: false`.
 
 | Field | Type | Default | Notes |
 |-------|------|---------|-------|
