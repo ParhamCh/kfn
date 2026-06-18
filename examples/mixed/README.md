@@ -53,9 +53,9 @@ Both accept the same fields. (Numbers may be JSON numbers — `"mb": 64` — or 
 
 ```json
 {
-  "cpu":   {"requested_ms": 2000, "workers": 2, "load": 1, "ops": 8123456},
+  "cpu":   {"duration_ms": 2000, "workers": 2, "load": 1, "total_ops": 8123456},
   "ram":   {"requested_mb": 64, "allocated_mb": 64, "rss_peak_mb": 78},
-  "sleep": {"requested_ms": 500, "distribution": "exp", "actual_ms": 612},
+  "sleep": {"requested_ms": 500, "distribution": "exp", "slept_ms": 612},
   "total_ms": 2010,
   "canceled": false,
   "request_id": "…"

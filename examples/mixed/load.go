@@ -36,10 +36,10 @@ type mixedParams struct {
 }
 
 type cpuResult struct {
-	RequestedMS int64   `json:"requested_ms"`
-	Workers     int     `json:"workers"`
-	Load        float64 `json:"load"`
-	Ops         uint64  `json:"ops"`
+	DurationMS int64   `json:"duration_ms"`
+	Workers    int     `json:"workers"`
+	Load       float64 `json:"load"`
+	TotalOps   uint64  `json:"total_ops"`
 }
 
 type ramResult struct {
@@ -51,7 +51,7 @@ type ramResult struct {
 type sleepResult struct {
 	RequestedMS  int64  `json:"requested_ms"`
 	Distribution string `json:"distribution"`
-	ActualMS     int64  `json:"actual_ms"`
+	SleptMS      int64  `json:"slept_ms"`
 }
 
 // mixedResult reports each load that ran (absent loads are omitted) plus the wall-clock total.
@@ -87,7 +87,7 @@ func runMixed(ctx context.Context, p mixedParams) mixedResult {
 	if p.cpu > 0 {
 		wg.Go(func() {
 			ops := cpuPhase(ctx, p.cpu, p.workers, p.load)
-			cpuRes = &cpuResult{RequestedMS: p.cpu.Milliseconds(), Workers: p.workers, Load: p.load, Ops: ops}
+			cpuRes = &cpuResult{DurationMS: p.cpu.Milliseconds(), Workers: p.workers, Load: p.load, TotalOps: ops}
 		})
 	}
 	if p.sleep > 0 {
@@ -96,7 +96,7 @@ func runMixed(ctx context.Context, p mixedParams) mixedResult {
 			target := pickSleep(p.sleep, p.dist, p.jitter, maxSleep, r)
 			s := time.Now()
 			sleepCtx(ctx, target)
-			sleepRes = &sleepResult{RequestedMS: target.Milliseconds(), Distribution: p.dist, ActualMS: time.Since(s).Milliseconds()}
+			sleepRes = &sleepResult{RequestedMS: target.Milliseconds(), Distribution: p.dist, SleptMS: time.Since(s).Milliseconds()}
 		})
 	}
 	if p.mb > 0 {

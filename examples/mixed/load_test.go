@@ -17,13 +17,13 @@ func TestRunsAllThreeConcurrently(t *testing.T) {
 	}
 	res := runMixed(context.Background(), p)
 
-	if res.CPU == nil || res.CPU.Ops == 0 {
+	if res.CPU == nil || res.CPU.TotalOps == 0 {
 		t.Fatalf("expected cpu work, got %+v", res.CPU)
 	}
 	if res.RAM == nil || res.RAM.AllocatedMB != 8 {
 		t.Fatalf("expected 8MB allocated, got %+v", res.RAM)
 	}
-	if res.Sleep == nil || res.Sleep.ActualMS < 60 {
+	if res.Sleep == nil || res.Sleep.SleptMS < 60 {
 		t.Fatalf("expected ~80ms sleep, got %+v", res.Sleep)
 	}
 	if res.Canceled {
