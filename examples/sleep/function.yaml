@@ -5,7 +5,7 @@
 #   kfn push  -f examples/sleep/function.yaml
 #   kfn apply -f examples/sleep/function.yaml
 name: load-sleep
-image: harbor.lan/kfn/load-sleep:0.1.0
+image: harbor.lan/kfn/load-sleep:0.1.1
 port: 8080            # default 8080
 replicas: 1
 resources:

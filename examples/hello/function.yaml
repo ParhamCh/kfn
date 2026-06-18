@@ -6,7 +6,7 @@
 #
 # Only `name` and `image` are required; every other field below is shown at its default.
 name: hello
-image: harbor.lan/kfn/hello:0.2.0
+image: harbor.lan/kfn/hello:0.2.1
 port: 8080            # default 8080
 replicas: 2
 resources:

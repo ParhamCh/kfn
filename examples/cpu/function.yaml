@@ -5,7 +5,7 @@
 #   kfn push  -f examples/cpu/function.yaml
 #   kfn apply -f examples/cpu/function.yaml
 name: load-cpu
-image: harbor.lan/kfn/load-cpu:0.1.0
+image: harbor.lan/kfn/load-cpu:0.1.1
 port: 8080            # default 8080
 replicas: 1
 resources:
