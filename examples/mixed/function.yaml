@@ -5,7 +5,7 @@
 #   kfn push  -f examples/mixed/function.yaml
 #   kfn apply -f examples/mixed/function.yaml
 name: load-mixed
-image: harbor.lan/kfn/load-mixed:0.1.0
+image: harbor.lan/kfn/load-mixed:0.1.1
 port: 8080            # default 8080
 replicas: 1
 resources:
