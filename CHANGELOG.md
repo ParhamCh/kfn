@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-06-12
+
+### Changed
+- Metrics handling now matches the runtime's actual behavior: the manifest **always**
+  injects `METRICS_PORT` and **always** validates that it differs from the function port,
+  because the runtime serves `/metrics` regardless of `monitoring.enabled` (which now only
+  governs *exposure* — the container/Service port — and *scraping* — the ServiceMonitor).
+  A function on port `9090` with monitoring off is now rejected instead of crash-looping.
+- `mixed`'s JSON result fields are aligned with the standalone examples (`duration_ms` /
+  `total_ops` for cpu, `slept_ms` for sleep) for consistency across the suite.
+
+### Fixed
+- `cpu`'s `canceled` flag is now exact (it checks the parent context) instead of a duration
+  heuristic that under-reported cancellation for sub-100ms bursts.
+
 ## [0.9.1] - 2026-06-12
 
 ### Fixed
@@ -179,7 +194,8 @@ All notable changes to this project are documented here. The format is based on
 - Structured JSON access logging (one line per invocation).
 - `examples/hello` reference function and accompanying `function.yaml`.
 
-[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/ParhamCh/kfn/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/ParhamCh/kfn/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/ParhamCh/kfn/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/ParhamCh/kfn/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/ParhamCh/kfn/compare/v0.7.0...v0.8.0

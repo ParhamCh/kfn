@@ -50,7 +50,7 @@ type cpuResult struct {
 // reports the work done. It returns promptly if ctx is cancelled (INVOKE_TIMEOUT firing or
 // the client disconnecting) rather than running the cores hot for nothing.
 func runCPU(ctx context.Context, p cpuParams) cpuResult {
-	ctx, cancel := context.WithTimeout(ctx, p.dur)
+	burnCtx, cancel := context.WithTimeout(ctx, p.dur)
 	defer cancel()
 
 	start := time.Now()
@@ -60,7 +60,7 @@ func runCPU(ctx context.Context, p cpuParams) cpuResult {
 		wg.Add(1)
 		go func(slot int) {
 			defer wg.Done()
-			counts[slot] = burn(ctx, p.load)
+			counts[slot] = burn(burnCtx, p.load)
 		}(i)
 	}
 	wg.Wait()
@@ -82,10 +82,10 @@ func runCPU(ctx context.Context, p cpuParams) cpuResult {
 		TotalOps:   total,
 		OpsPerSec:  opsPerSec,
 		GOMAXPROCS: runtime.GOMAXPROCS(0),
-		// ctx.Err on a deadline-bounded ctx is DeadlineExceeded at full term; a parent
-		// cancellation (client gone) also lands here. We can't distinguish "completed" from
-		// "deadline" via err alone, so report cancellation only when we stopped early.
-		Canceled: elapsed < p.dur-dutyTick && ctx.Err() != nil,
+		// The burn always runs to its own deadline (burnCtx), so report cancellation only
+		// when the *parent* ctx was cancelled — INVOKE_TIMEOUT firing before p.dur, or the
+		// client disconnecting. This is exact, even for sub-tick bursts.
+		Canceled: ctx.Err() != nil,
 	}
 }
 
