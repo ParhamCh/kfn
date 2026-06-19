@@ -6,7 +6,7 @@
 #
 # Only `name` and `image` are required; every other field below is shown at its default.
 name: hello
-image: harbor.lan/kfn/hello:0.2.1
+image: harbor.lan/kfn/hello:0.2.2
 port: 8080            # default 8080
 replicas: 2
 resources:
@@ -27,7 +27,7 @@ ingress:
   # clusterIssuer: cm-lab-ca   (default)
   # className: nginx           (default)
 # Prometheus metrics are on by default (/metrics on :9090 + a ServiceMonitor).
-# monitoring:
-#   enabled: true            (default; false drops the metrics port + ServiceMonitor)
-#   interval: 30s            (default scrape interval)
-#   releaseLabel: kps        (default; the label the prometheus-operator selects on)
+monitoring:
+  interval: 10s              # scrape every 10s so a 30s RPS window has >=2 samples (rate needs that)
+  # enabled: true            (default; false drops the metrics port + ServiceMonitor)
+  # releaseLabel: kps        (default; the label the prometheus-operator selects on)

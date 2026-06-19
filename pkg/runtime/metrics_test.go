@@ -74,3 +74,51 @@ func TestMetricsCountSheddingAndTimeouts(t *testing.T) {
 		t.Errorf("shed request not counted with code=429; got:\n%s", out)
 	}
 }
+
+func TestMetricsExposesCapacityAndBuildInfo(t *testing.T) {
+	m := newMetrics(config{Name: "hello", MaxConcurrency: 5})
+	out := scrape(t, m)
+	// Capacity, so an autoscaler can compute saturation = in_flight / max_concurrency.
+	if !strings.Contains(out, `kfn_max_concurrency{function="hello"} 5`) {
+		t.Errorf("kfn_max_concurrency not 5; got:\n%s", out)
+	}
+	for _, want := range []string{"kfn_build_info{", `function="hello"`, "go_version=", "kfn_version="} {
+		if !strings.Contains(out, want) {
+			t.Errorf("scrape missing %q", want)
+		}
+	}
+}
+
+func TestMetricsHonorsCustomBuckets(t *testing.T) {
+	hc := &health{}
+	hc.setReady(true)
+	m := newMetrics(config{Name: "hello", LatencyBuckets: []float64{0.25, 0.5}})
+	mux := newMux(func(_ context.Context, _ *Request) (*Response, error) {
+		return Text(http.StatusOK, "ok"), nil
+	}, hc, m, config{}, discardLogger)
+	do(t, mux, http.MethodGet, "/", nil)
+
+	out := scrape(t, m)
+	if !strings.Contains(out, `le="0.25"`) || !strings.Contains(out, `le="0.5"`) {
+		t.Errorf("custom histogram buckets not honored; got:\n%s", out)
+	}
+	if strings.Contains(out, `le="0.005"`) {
+		t.Errorf("default buckets present despite custom config; got:\n%s", out)
+	}
+}
+
+func TestMetricsCountsPanics(t *testing.T) {
+	hc := &health{}
+	hc.setReady(true)
+	m := newMetrics(config{Name: "hello"})
+	// Wrap the handler the way Start does, so recovered panics increment the counter.
+	h := withRecover(discardLogger, m.panics, func(_ context.Context, _ *Request) (*Response, error) {
+		panic("boom")
+	})
+	mux := newMux(h, hc, m, config{}, discardLogger)
+	do(t, mux, http.MethodGet, "/", nil)
+
+	if out := scrape(t, m); !strings.Contains(out, `kfn_panics_total{function="hello"} 1`) {
+		t.Errorf("panic not counted; got:\n%s", out)
+	}
+}

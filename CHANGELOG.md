@@ -6,6 +6,32 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- Shared recording rules (`deploy/kfn-recording-rules.yaml`) defining the canonical
+  `kfn:function:*` signals an autoscaler reads — request rate (`1m` and a faster `30s`
+  window), CPU/memory utilization (vs limit), shed/error rates, p95/p99 latency, throttle
+  ratio, replicas, and concurrency saturation (for long-lived workloads) — including the
+  join that attaches the `function` label to kube-state-metrics / cAdvisor series via the
+  runtime's own `pod`+`function` labels.
+- `docs/autoscaling-signals.md` — the signal catalog (raw metrics + the `kfn:function:*`
+  recording rules), a "how to trust the data" guide (RPS vs gauges, the rate-window ≥ 2×
+  scrape rule, counter resets, cardinality), and a **how-to-test-RPS** recipe.
+- A real-time **autoscaling-signals Grafana dashboard** (`docs/grafana/kfn-autoscaling-dashboard.json`),
+  RPS-first (30s window) with per-status-code and **per-replica** RPS breakdowns; concurrency
+  saturation is a secondary panel (it is gauge-based and only meaningful for blocking
+  workloads — fast requests are invisible to the in-flight gauge between scrapes).
+
+### Changed
+- `examples/hello` now scrapes at `monitoring.interval: 10s` like the load functions, so a
+  30s RPS window has the ≥2 samples `rate()` needs (the rate window must exceed 2× the
+  scrape interval, or `rate()` returns nothing).
+- Autoscaling-grade runtime metrics: `kfn_max_concurrency` (the per-pod in-flight ceiling,
+  so saturation = `kfn_in_flight_requests / kfn_max_concurrency` is computable),
+  `kfn_build_info` (constant 1 with `kfn_version`/`go_version` labels), and
+  `kfn_panics_total` (recovered handler panics — a health signal). The
+  `kfn_request_duration_seconds` histogram buckets are now configurable via `METRICS_BUCKETS`
+  for accurate percentiles.
+
 ## [1.0.0] - 2026-06-12
 
 First **stable** release. The function runtime (`pkg/runtime`), the `kfn` CLI,

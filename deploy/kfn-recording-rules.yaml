@@ -1,0 +1,97 @@
+# Shared, cluster-wide recording rules: the canonical kfn:function:* signals an autoscaler
+# (and the autoscaling dashboard) read. Apply once:
+#   kubectl apply -f deploy/kfn-recording-rules.yaml
+#
+# Discovery: the prometheus-operator selects PrometheusRules by the label `release: kps`
+# (matching this cluster's kube-prometheus-stack). namespaceSelector is empty (all namespaces).
+#
+# The join trick: kube-state-metrics / cAdvisor series carry `pod` but not `function`. Our
+# own app metrics carry both, so `kfn:pod:function` (built from kfn_build_info) is the
+# pod -> function map we multiply onto the limit/throttle series to attach `function`.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kfn-recording-rules
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: kfn
+    app.kubernetes.io/managed-by: kfn
+    release: kps
+spec:
+  groups:
+    - name: kfn.recording
+      interval: 15s
+      rules:
+        # pod -> function map (value 1), scoped to kfn pods (only they export kfn_build_info).
+        - record: kfn:pod:function
+          expr: count by (namespace, pod, function) (kfn_build_info)
+
+        # --- demand / load ---
+        # The trustworthy primary signal (counters lose no requests, fast or slow). Two
+        # windows: 1m is the smoothed default; 30s reacts faster (noisier) for the dashboard.
+        - record: kfn:function:request_rate
+          expr: sum by (function) (rate(kfn_requests_total[1m]))
+        - record: kfn:function:request_rate_30s
+          expr: sum by (function) (rate(kfn_requests_total[30s]))
+        - record: kfn:function:inflight
+          expr: sum by (function) (kfn_in_flight_requests)
+        - record: kfn:function:capacity
+          expr: sum by (function) (kfn_max_concurrency)
+        # Saturation only where a concurrency cap is set (capacity > 0); unlimited functions
+        # have no series here — scale them on CPU instead.
+        - record: kfn:function:concurrency_saturation
+          expr: kfn:function:inflight / (kfn:function:capacity > 0)
+
+        # --- errors / shedding (health gates) ---
+        - record: kfn:function:error_rate
+          expr: sum by (function) (rate(kfn_requests_total{code=~"5.."}[1m]))
+        - record: kfn:function:error_ratio
+          expr: kfn:function:error_rate / kfn:function:request_rate
+        - record: kfn:function:shed_rate
+          expr: sum by (function) (rate(kfn_requests_total{code="429"}[1m]))
+
+        # --- CPU ---
+        - record: kfn:function:cpu_cores
+          expr: sum by (function) (rate(process_cpu_seconds_total{function!=""}[1m]))
+        - record: kfn:function:cpu_limit_cores
+          expr: |
+            sum by (function) (
+              kube_pod_container_resource_limits{resource="cpu", container="function"}
+              * on (namespace, pod) group_left(function) kfn:pod:function
+            )
+        - record: kfn:function:cpu_utilization
+          expr: kfn:function:cpu_cores / kfn:function:cpu_limit_cores
+        - record: kfn:function:cpu_throttle_ratio
+          expr: |
+            sum by (function) (
+              rate(container_cpu_cfs_throttled_periods_total{container="function"}[1m])
+              * on (namespace, pod) group_left(function) kfn:pod:function
+            )
+            /
+            sum by (function) (
+              rate(container_cpu_cfs_periods_total{container="function"}[1m])
+              * on (namespace, pod) group_left(function) kfn:pod:function
+            )
+
+        # --- memory ---
+        - record: kfn:function:memory_bytes
+          expr: sum by (function) (process_resident_memory_bytes{function!=""})
+        - record: kfn:function:memory_limit_bytes
+          expr: |
+            sum by (function) (
+              kube_pod_container_resource_limits{resource="memory", container="function"}
+              * on (namespace, pod) group_left(function) kfn:pod:function
+            )
+        - record: kfn:function:memory_utilization
+          expr: kfn:function:memory_bytes / kfn:function:memory_limit_bytes
+
+        # --- latency (SLO) ---
+        - record: kfn:function:latency_p95
+          expr: histogram_quantile(0.95, sum by (function, le) (rate(kfn_request_duration_seconds_bucket[5m])))
+        - record: kfn:function:latency_p99
+          expr: histogram_quantile(0.99, sum by (function, le) (rate(kfn_request_duration_seconds_bucket[5m])))
+
+        # --- scale (the lever's current position) ---
+        # Scraped/serving replicas: one kfn_in_flight_requests series per pod.
+        - record: kfn:function:replicas
+          expr: count by (function) (kfn_in_flight_requests)

@@ -56,7 +56,7 @@ func TestWithTimeoutDisabledPassesThrough(t *testing.T) {
 }
 
 func TestWithRecoverCatchesPanic(t *testing.T) {
-	h := withRecover(discardLogger, func(_ context.Context, _ *Request) (*Response, error) {
+	h := withRecover(discardLogger, nil, func(_ context.Context, _ *Request) (*Response, error) {
 		panic("boom")
 	})
 	resp, err := h(context.Background(), &Request{})
@@ -71,7 +71,7 @@ func TestWithRecoverCatchesPanic(t *testing.T) {
 // A panic inside a handler running under withTimeout must be recovered in the spawned
 // goroutine; if the composition order were wrong, this test binary would crash.
 func TestTimeoutWithPanicDoesNotCrash(t *testing.T) {
-	h := withTimeout(time.Second, withRecover(discardLogger, func(_ context.Context, _ *Request) (*Response, error) {
+	h := withTimeout(time.Second, withRecover(discardLogger, nil, func(_ context.Context, _ *Request) (*Response, error) {
 		panic("boom")
 	}))
 	if _, err := h(context.Background(), &Request{}); err == nil {
@@ -83,7 +83,7 @@ func TestTimeoutWithPanicDoesNotCrash(t *testing.T) {
 // keeps serving (a follow-up request still succeeds on the same mux).
 func TestPanicYields500AndServerSurvives(t *testing.T) {
 	var panicNext bool
-	h := withTimeout(0, withRecover(discardLogger, func(_ context.Context, _ *Request) (*Response, error) {
+	h := withTimeout(0, withRecover(discardLogger, nil, func(_ context.Context, _ *Request) (*Response, error) {
 		if panicNext {
 			panic("boom")
 		}
