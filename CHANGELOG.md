@@ -8,12 +8,15 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 - Shared recording rules (`deploy/kfn-recording-rules.yaml`) defining the canonical
-  `kfn:function:*` signals an autoscaler reads — request rate, concurrency saturation,
-  CPU/memory utilization (vs limit), shed/error rates, p95/p99 latency, throttle ratio,
-  replicas — including the join that attaches the `function` label to kube-state-metrics /
-  cAdvisor series via the runtime's own `pod`+`function` labels.
-- A real-time **autoscaling-signals Grafana dashboard** (`docs/grafana/kfn-autoscaling-dashboard.json`)
-  built on those recording rules.
+  `kfn:function:*` signals an autoscaler reads — request rate (`1m` and a faster `30s`
+  window), CPU/memory utilization (vs limit), shed/error rates, p95/p99 latency, throttle
+  ratio, replicas, and concurrency saturation (for long-lived workloads) — including the
+  join that attaches the `function` label to kube-state-metrics / cAdvisor series via the
+  runtime's own `pod`+`function` labels.
+- A real-time **autoscaling-signals Grafana dashboard** (`docs/grafana/kfn-autoscaling-dashboard.json`),
+  RPS-first with a switchable rate window and a per-status-code breakdown; concurrency
+  saturation is a secondary panel (it is gauge-based and only meaningful for blocking
+  workloads — fast requests are invisible to the in-flight gauge between scrapes).
 - Autoscaling-grade runtime metrics: `kfn_max_concurrency` (the per-pod in-flight ceiling,
   so saturation = `kfn_in_flight_requests / kfn_max_concurrency` is computable),
   `kfn_build_info` (constant 1 with `kfn_version`/`go_version` labels), and

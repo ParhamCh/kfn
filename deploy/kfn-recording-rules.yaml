@@ -27,8 +27,12 @@ spec:
           expr: count by (namespace, pod, function) (kfn_build_info)
 
         # --- demand / load ---
+        # The trustworthy primary signal (counters lose no requests, fast or slow). Two
+        # windows: 1m is the smoothed default; 30s reacts faster (noisier) for the dashboard.
         - record: kfn:function:request_rate
           expr: sum by (function) (rate(kfn_requests_total[1m]))
+        - record: kfn:function:request_rate_30s
+          expr: sum by (function) (rate(kfn_requests_total[30s]))
         - record: kfn:function:inflight
           expr: sum by (function) (kfn_in_flight_requests)
         - record: kfn:function:capacity
