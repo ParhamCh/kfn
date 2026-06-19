@@ -13,6 +13,9 @@ All notable changes to this project are documented here. The format is based on
   ratio, replicas, and concurrency saturation (for long-lived workloads) — including the
   join that attaches the `function` label to kube-state-metrics / cAdvisor series via the
   runtime's own `pod`+`function` labels.
+- `docs/autoscaling-signals.md` — the signal catalog (raw metrics + the `kfn:function:*`
+  recording rules), a "how to trust the data" guide (RPS vs gauges, the rate-window ≥ 2×
+  scrape rule, counter resets, cardinality), and a **how-to-test-RPS** recipe.
 - A real-time **autoscaling-signals Grafana dashboard** (`docs/grafana/kfn-autoscaling-dashboard.json`),
   RPS-first (30s window) with per-status-code and **per-replica** RPS breakdowns; concurrency
   saturation is a secondary panel (it is gauge-based and only meaningful for blocking
