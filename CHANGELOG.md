@@ -14,9 +14,14 @@ All notable changes to this project are documented here. The format is based on
   join that attaches the `function` label to kube-state-metrics / cAdvisor series via the
   runtime's own `pod`+`function` labels.
 - A real-time **autoscaling-signals Grafana dashboard** (`docs/grafana/kfn-autoscaling-dashboard.json`),
-  RPS-first with a switchable rate window and a per-status-code breakdown; concurrency
+  RPS-first (30s window) with per-status-code and **per-replica** RPS breakdowns; concurrency
   saturation is a secondary panel (it is gauge-based and only meaningful for blocking
   workloads — fast requests are invisible to the in-flight gauge between scrapes).
+
+### Changed
+- `examples/hello` now scrapes at `monitoring.interval: 10s` like the load functions, so a
+  30s RPS window has the ≥2 samples `rate()` needs (the rate window must exceed 2× the
+  scrape interval, or `rate()` returns nothing).
 - Autoscaling-grade runtime metrics: `kfn_max_concurrency` (the per-pod in-flight ceiling,
   so saturation = `kfn_in_flight_requests / kfn_max_concurrency` is computable),
   `kfn_build_info` (constant 1 with `kfn_version`/`go_version` labels), and

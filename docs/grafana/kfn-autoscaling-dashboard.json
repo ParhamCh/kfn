@@ -24,19 +24,6 @@
         "refresh": 2,
         "includeAll": false,
         "current": {}
-      },
-      {
-        "name": "rate_window",
-        "label": "Rate window",
-        "type": "custom",
-        "query": "30s,1m,2m,5m",
-        "current": { "text": "1m", "value": "1m" },
-        "options": [
-          { "text": "30s", "value": "30s", "selected": false },
-          { "text": "1m", "value": "1m", "selected": true },
-          { "text": "2m", "value": "2m", "selected": false },
-          { "text": "5m", "value": "5m", "selected": false }
-        ]
       }
     ]
   },
@@ -44,13 +31,13 @@
     {
       "id": 1,
       "title": "Requests / sec",
-      "description": "The primary signal. RPS = rate(kfn_requests_total[$rate_window]) — a per-second average over the window (counters never drop a request, fast or slow). One isolated request reads 1/window, not 1.",
+      "description": "The primary signal: rate(kfn_requests_total[30s]) summed over replicas. Counter-based, so it never drops a request, fast or slow. It is a per-second average over the 30s window — one isolated request reads 1/30 ≈ 0.03, not 1; sustain N/sec to read N.",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 0, "y": 0, "w": 9, "h": 6 },
       "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 2, "color": { "mode": "fixed", "fixedColor": "green" } }, "overrides": [] },
       "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value" },
-      "targets": [ { "refId": "A", "expr": "sum(rate(kfn_requests_total{function=\"$function\"}[$rate_window]))" } ]
+      "targets": [ { "refId": "A", "expr": "sum(rate(kfn_requests_total{function=\"$function\"}[30s]))" } ]
     },
     {
       "id": 2,
@@ -94,20 +81,17 @@
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
       "fieldConfig": { "defaults": { "unit": "reqps", "min": 0, "custom": { "stacking": { "mode": "normal" } } }, "overrides": [] },
-      "targets": [ { "refId": "A", "expr": "sum by (code) (rate(kfn_requests_total{function=\"$function\"}[$rate_window]))", "legendFormat": "{{code}}" } ]
+      "targets": [ { "refId": "A", "expr": "sum by (code) (rate(kfn_requests_total{function=\"$function\"}[30s]))", "legendFormat": "{{code}}" } ]
     },
     {
       "id": 6,
-      "title": "Request rate — 30s (fast) vs 1m (smoothed)",
-      "description": "How the window trades responsiveness for noise. The autoscaler can read kfn:function:request_rate (1m) or kfn:function:request_rate_30s (30s).",
+      "title": "Requests/sec per replica",
+      "description": "RPS broken out per pod (kfn_requests_total carries a pod label), so you can see how load is distributed across replicas.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
       "fieldConfig": { "defaults": { "unit": "reqps", "min": 0 }, "overrides": [] },
-      "targets": [
-        { "refId": "A", "expr": "kfn:function:request_rate_30s{function=\"$function\"}", "legendFormat": "30s (fast)" },
-        { "refId": "B", "expr": "kfn:function:request_rate{function=\"$function\"}", "legendFormat": "1m (smoothed)" }
-      ]
+      "targets": [ { "refId": "A", "expr": "sum by (pod) (rate(kfn_requests_total{function=\"$function\"}[30s]))", "legendFormat": "{{pod}}" } ]
     },
     {
       "id": 7,
