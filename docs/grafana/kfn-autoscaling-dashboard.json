@@ -80,8 +80,8 @@
     },
     {
       "id": 5,
-      "title": "Request rate — total & by status code",
-      "description": "The 'total' line is the same kfn:function:request_rate_30s series as the Requests/sec stat, so they always agree. The per-code lines are the breakdown (they sum to total).",
+      "title": "Requests/sec per replica",
+      "description": "RPS per pod (kfn_requests_total carries a pod label), plus the bold 'total' line — the same kfn:function:request_rate_30s series as the Requests/sec stat, so they always agree.",
       "type": "timeseries",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
@@ -91,23 +91,26 @@
       ] },
       "targets": [
         { "refId": "A", "expr": "kfn:function:request_rate_30s{function=\"$function\"}", "legendFormat": "total" },
-        { "refId": "B", "expr": "sum by (code) (rate(kfn_requests_total{function=\"$function\"}[30s]))", "legendFormat": "{{code}}" }
+        { "refId": "B", "expr": "sum by (pod) (rate(kfn_requests_total{function=\"$function\"}[30s]))", "legendFormat": "{{pod}}" }
       ]
     },
     {
       "id": 6,
-      "title": "Requests/sec per replica",
-      "description": "RPS broken out per pod (kfn_requests_total carries a pod label), so you can see how load is distributed across replicas.",
+      "title": "Request rate by status class",
+      "description": "RPS grouped by HTTP status class (2xx success / 4xx client + shed / 5xx server). No total line — that's on the per-replica chart to the left.",
       "type": "timeseries",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
       "fieldConfig": { "defaults": { "unit": "reqps", "min": 0 }, "overrides": [
-        { "matcher": { "id": "byName", "options": "total" }, "properties": [ { "id": "custom.lineWidth", "value": 2 }, { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } } ] }
+        { "matcher": { "id": "byName", "options": "2xx" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } } ] },
+        { "matcher": { "id": "byName", "options": "4xx" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] },
+        { "matcher": { "id": "byName", "options": "5xx" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } } ] }
       ] },
       "targets": [
-        { "refId": "A", "expr": "kfn:function:request_rate_30s{function=\"$function\"}", "legendFormat": "total" },
-        { "refId": "B", "expr": "sum by (pod) (rate(kfn_requests_total{function=\"$function\"}[30s]))", "legendFormat": "{{pod}}" }
+        { "refId": "A", "expr": "sum(rate(kfn_requests_total{function=\"$function\", code=~\"2..\"}[30s]))", "legendFormat": "2xx" },
+        { "refId": "B", "expr": "sum(rate(kfn_requests_total{function=\"$function\", code=~\"4..\"}[30s]))", "legendFormat": "4xx" },
+        { "refId": "C", "expr": "sum(rate(kfn_requests_total{function=\"$function\", code=~\"5..\"}[30s]))", "legendFormat": "5xx" }
       ]
     },
     {
