@@ -20,7 +20,7 @@ metadata:
 spec:
   groups:
     - name: kfn.recording
-      interval: 15s
+      interval: 10s    # match the scrape interval: every scrape yields a fresh rule point
       rules:
         # pod -> function map (value 1), scoped to kfn pods (only they export kfn_build_info).
         - record: kfn:pod:function
