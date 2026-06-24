@@ -37,7 +37,7 @@
       "gridPos": { "x": 0, "y": 0, "w": 9, "h": 6 },
       "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 2, "color": { "mode": "fixed", "fixedColor": "green" } }, "overrides": [] },
       "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value" },
-      "targets": [ { "refId": "A", "expr": "sum(rate(kfn_requests_total{function=\"$function\"}[30s]))" } ]
+      "targets": [ { "refId": "A", "expr": "kfn:function:request_rate_30s{function=\"$function\"}" } ]
     },
     {
       "id": 2,
@@ -76,27 +76,41 @@
     },
     {
       "id": 5,
-      "title": "Request rate by status code",
+      "title": "Request rate — total & by status code",
+      "description": "The 'total' line is the same kfn:function:request_rate_30s series as the Requests/sec stat, so they always agree. The per-code lines are the breakdown (they sum to total).",
       "type": "timeseries",
+      "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "reqps", "min": 0, "custom": { "stacking": { "mode": "normal" } } }, "overrides": [] },
-      "targets": [ { "refId": "A", "expr": "sum by (code) (rate(kfn_requests_total{function=\"$function\"}[30s]))", "legendFormat": "{{code}}" } ]
+      "fieldConfig": { "defaults": { "unit": "reqps", "min": 0 }, "overrides": [
+        { "matcher": { "id": "byName", "options": "total" }, "properties": [ { "id": "custom.lineWidth", "value": 2 }, { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } } ] }
+      ] },
+      "targets": [
+        { "refId": "A", "expr": "kfn:function:request_rate_30s{function=\"$function\"}", "legendFormat": "total" },
+        { "refId": "B", "expr": "sum by (code) (rate(kfn_requests_total{function=\"$function\"}[30s]))", "legendFormat": "{{code}}" }
+      ]
     },
     {
       "id": 6,
       "title": "Requests/sec per replica",
       "description": "RPS broken out per pod (kfn_requests_total carries a pod label), so you can see how load is distributed across replicas.",
       "type": "timeseries",
+      "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "reqps", "min": 0 }, "overrides": [] },
-      "targets": [ { "refId": "A", "expr": "sum by (pod) (rate(kfn_requests_total{function=\"$function\"}[30s]))", "legendFormat": "{{pod}}" } ]
+      "fieldConfig": { "defaults": { "unit": "reqps", "min": 0 }, "overrides": [
+        { "matcher": { "id": "byName", "options": "total" }, "properties": [ { "id": "custom.lineWidth", "value": 2 }, { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } } ] }
+      ] },
+      "targets": [
+        { "refId": "A", "expr": "kfn:function:request_rate_30s{function=\"$function\"}", "legendFormat": "total" },
+        { "refId": "B", "expr": "sum by (pod) (rate(kfn_requests_total{function=\"$function\"}[30s]))", "legendFormat": "{{pod}}" }
+      ]
     },
     {
       "id": 7,
       "title": "CPU — cores vs limit",
       "type": "timeseries",
+      "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 0, "y": 14, "w": 12, "h": 8 },
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 3, "min": 0 }, "overrides": [] },
@@ -110,6 +124,7 @@
       "id": 8,
       "title": "Latency p95 / p99",
       "type": "timeseries",
+      "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 12, "y": 14, "w": 12, "h": 8 },
       "fieldConfig": { "defaults": { "unit": "s", "min": 0 }, "overrides": [] },
@@ -122,6 +137,7 @@
       "id": 9,
       "title": "Memory utilization (vs limit)",
       "type": "timeseries",
+      "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 0, "y": 22, "w": 12, "h": 8 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
@@ -131,6 +147,7 @@
       "id": 10,
       "title": "Errors & shedding",
       "type": "timeseries",
+      "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 12, "y": 22, "w": 12, "h": 8 },
       "fieldConfig": { "defaults": { "min": 0 }, "overrides": [
@@ -147,6 +164,7 @@
       "title": "Concurrency saturation — long-lived requests only",
       "description": "Gauge-based (in-flight / capacity). Meaningful for blocking workloads like sleep; for fast requests the in-flight gauge reads ~0 between scrapes, so use Requests/sec instead. Only appears for functions with MAX_CONCURRENCY set.",
       "type": "timeseries",
+      "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 0, "y": 30, "w": 12, "h": 7 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
