@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"net/http"
+	"runtime/debug"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
@@ -16,6 +17,7 @@ type metrics struct {
 	inFlight prometheus.Gauge
 	requests *prometheus.CounterVec
 	duration *prometheus.HistogramVec
+	panics   prometheus.Counter
 }
 
 // newMetrics builds a fresh registry (not the global default, so tests stay isolated),
@@ -30,6 +32,11 @@ func newMetrics(cfg config) *metrics {
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
 
+	buckets := cfg.LatencyBuckets
+	if len(buckets) == 0 {
+		buckets = prometheus.DefBuckets
+	}
+
 	m := &metrics{
 		reg: reg,
 		inFlight: prometheus.NewGauge(prometheus.GaugeOpts{
@@ -43,11 +50,57 @@ func newMetrics(cfg config) *metrics {
 		duration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name:    "kfn_request_duration_seconds",
 			Help:    "Invocation latency in seconds by HTTP method.",
-			Buckets: prometheus.DefBuckets,
+			Buckets: buckets,
 		}, []string{"method"}),
+		panics: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "kfn_panics_total",
+			Help: "Total handler panics recovered by the runtime (a health signal, not a scale signal).",
+		}),
 	}
-	r.MustRegister(m.inFlight, m.requests, m.duration)
+
+	// Capacity signal: the per-pod in-flight ceiling, so an autoscaler can compute
+	// saturation = kfn_in_flight_requests / kfn_max_concurrency. 0 means unlimited.
+	maxConcurrency := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "kfn_max_concurrency",
+		Help: "Configured MAX_CONCURRENCY (per-pod in-flight ceiling); 0 means unlimited.",
+	})
+	maxConcurrency.Set(float64(cfg.MaxConcurrency))
+
+	// Build info: a constant 1 carrying the runtime and Go versions in labels, so you can
+	// confirm which code a function is actually running.
+	kfnVersion, goVersion := buildVersions()
+	buildInfo := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "kfn_build_info",
+		Help: "Runtime build info; constant 1 with kfn_version and go_version labels.",
+	}, []string{"kfn_version", "go_version"})
+	buildInfo.WithLabelValues(kfnVersion, goVersion).Set(1)
+
+	r.MustRegister(m.inFlight, m.requests, m.duration, m.panics, maxConcurrency, buildInfo)
 	return m
+}
+
+// buildVersions reports the kfn module version and Go toolchain version from the embedded
+// build info, for the kfn_build_info metric.
+func buildVersions() (kfnVersion, goVersion string) {
+	kfnVersion, goVersion = "devel", "unknown"
+	bi, ok := debug.ReadBuildInfo()
+	if !ok {
+		return
+	}
+	if bi.GoVersion != "" {
+		goVersion = bi.GoVersion
+	}
+	// When kfn is the main module (its own examples), Main carries the version; when it is a
+	// dependency of a user's function, it appears in Deps.
+	if bi.Main.Path == "github.com/ParhamCh/kfn" && bi.Main.Version != "" {
+		kfnVersion = bi.Main.Version
+	}
+	for _, d := range bi.Deps {
+		if d.Path == "github.com/ParhamCh/kfn" && d.Version != "" {
+			kfnVersion = d.Version
+		}
+	}
+	return
 }
 
 // middleware instruments the invocation chain: in-flight gauge, request count by

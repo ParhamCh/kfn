@@ -24,13 +24,20 @@ curl -s http://localhost:9090/metrics | grep '^kfn_'
 | Metric | Type | Labels | Use |
 |--------|------|--------|-----|
 | `kfn_requests_total` | counter | `function`, `method`, `code` | request rate, error rate, `429`/`504` saturation |
-| `kfn_request_duration_seconds` | histogram | `function`, `method` | latency / SLOs (default Prometheus buckets) |
-| `kfn_in_flight_requests` | gauge | `function` | live concurrency — a direct scale signal |
+| `kfn_request_duration_seconds` | histogram | `function`, `method` | latency / SLOs (buckets tunable via `METRICS_BUCKETS`) |
+| `kfn_in_flight_requests` | gauge | `function` | live concurrency — meaningful for long-lived requests |
+| `kfn_max_concurrency` | gauge | `function` | the `MAX_CONCURRENCY` ceiling (`0` = unlimited) → saturation = in-flight / this |
+| `kfn_panics_total` | counter | `function` | recovered handler panics — a health signal |
+| `kfn_build_info` | gauge `1` | `function`, `kfn_version`, `go_version` | which code/version a function runs |
 
 The standard `go_*` and `process_*` collectors are exported too, each also carrying the
 `function` label. `code` includes the runtime's own `429` (shed) and `504` (timeout), so
 saturation and timeout rates are visible without extra instrumentation. The request **path
 is not a label** — that's deliberate, to keep cardinality bounded.
+
+> **For autoscaling** — the canonical `kfn:function:*` recording rules, how to *trust* these
+> signals (RPS vs. gauges, the rate-window-vs-scrape rule), and how to **test RPS** are in
+> [`autoscaling-signals.md`](autoscaling-signals.md).
 
 ## Wiring into Prometheus (ServiceMonitor)
 

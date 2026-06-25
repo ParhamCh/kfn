@@ -7,16 +7,22 @@ import (
 	"net/http"
 	"runtime/debug"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
-// withRecover wraps a Handler so a panic in user code is caught, logged with its
-// stack, and converted to a generic error (which writeError renders as a masked 500).
-// The process keeps serving. recover must run in the same goroutine as the user call,
-// so this is composed *inside* withTimeout (see Start).
-func withRecover(logger *slog.Logger, h Handler) Handler {
+// withRecover wraps a Handler so a panic in user code is caught, counted, logged with its
+// stack, and converted to a generic error (which writeError renders as a masked 500). The
+// process keeps serving. recover must run in the same goroutine as the user call, so this
+// is composed *inside* withTimeout (see Start). panics may be nil (it is incremented only
+// when set), which keeps the function usable in tests.
+func withRecover(logger *slog.Logger, panics prometheus.Counter, h Handler) Handler {
 	return func(ctx context.Context, req *Request) (resp *Response, err error) {
 		defer func() {
 			if r := recover(); r != nil {
+				if panics != nil {
+					panics.Inc()
+				}
 				logger.Error("handler panicked", "panic", r, "stack", string(debug.Stack()))
 				resp = nil
 				err = fmt.Errorf("handler panic: %v", r)
