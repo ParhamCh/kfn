@@ -6,31 +6,47 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-06-25
+
+**Trustworthy, real-time RPS monitoring.** Requests/sec (`kfn_requests_total`) is the
+primary signal end-to-end: counter-based so it never drops a request — fast or slow —
+evaluated every **10s**, and rendered on a dashboard where the headline stat and the
+charts always agree. This is the input contract the upcoming per-function autoscaler reads.
+
 ### Added
 - Shared recording rules (`deploy/kfn-recording-rules.yaml`) defining the canonical
   `kfn:function:*` signals an autoscaler reads — request rate (`1m` and a faster `30s`
   window), CPU/memory utilization (vs limit), shed/error rates, p95/p99 latency, throttle
   ratio, replicas, and concurrency saturation (for long-lived workloads) — including the
   join that attaches the `function` label to kube-state-metrics / cAdvisor series via the
-  runtime's own `pod`+`function` labels.
+  runtime's own `pod`+`function` labels. Rules evaluate every **10s**, matching the scrape.
 - `docs/autoscaling-signals.md` — the signal catalog (raw metrics + the `kfn:function:*`
   recording rules), a "how to trust the data" guide (RPS vs gauges, the rate-window ≥ 2×
-  scrape rule, counter resets, cardinality), and a **how-to-test-RPS** recipe.
+  scrape rule, counter resets, cardinality), and a **how-to-test-RPS** recipe (drive an
+  exact rate with `hey`, cross-check against Prometheus).
 - A real-time **autoscaling-signals Grafana dashboard** (`docs/grafana/kfn-autoscaling-dashboard.json`),
-  RPS-first (30s window) with per-status-code and **per-replica** RPS breakdowns; concurrency
-  saturation is a secondary panel (it is gauge-based and only meaningful for blocking
-  workloads — fast requests are invisible to the in-flight gauge between scrapes).
-
-### Changed
-- `examples/hello` now scrapes at `monitoring.interval: 10s` like the load functions, so a
-  30s RPS window has the ≥2 samples `rate()` needs (the rate window must exceed 2× the
-  scrape interval, or `rate()` returns nothing).
+  RPS-first (30s window): a Requests/sec hero stat, **Requests/sec per replica** (with a bold
+  total line) and **request rate by status class** (2xx/4xx/5xx with traffic-light colors),
+  plus CPU/memory vs limit, latency p95/p99, and errors & shedding. Concurrency saturation is
+  a secondary panel (gauge-based, only meaningful for blocking workloads).
 - Autoscaling-grade runtime metrics: `kfn_max_concurrency` (the per-pod in-flight ceiling,
   so saturation = `kfn_in_flight_requests / kfn_max_concurrency` is computable),
   `kfn_build_info` (constant 1 with `kfn_version`/`go_version` labels), and
   `kfn_panics_total` (recovered handler panics — a health signal). The
   `kfn_request_duration_seconds` histogram buckets are now configurable via `METRICS_BUCKETS`
   for accurate percentiles.
+
+### Changed
+- `examples/hello` now scrapes at `monitoring.interval: 10s` like the load functions, so a
+  30s RPS window has the ≥2 samples `rate()` needs (the rate window must exceed 2× the
+  scrape interval, or `rate()` returns nothing).
+
+### Fixed
+- Dashboard RPS **stat and charts now stay in sync**: the Requests/sec stat reads the same
+  `kfn:function:request_rate_30s` recording rule as the charts' bold "total" line, and every
+  panel pins a **10s min interval** so Grafana's query step matches the 10s data (it
+  otherwise floors at the datasource's default, updating the stat only every 15–30s out of
+  step with the charts).
 
 ## [1.0.0] - 2026-06-12
 
