@@ -35,7 +35,7 @@
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 0, "y": 0, "w": 9, "h": 6 },
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 6 },
       "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 2, "color": { "mode": "fixed", "fixedColor": "green" } }, "overrides": [] },
       "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value" },
       "targets": [ { "refId": "A", "expr": "kfn:function:request_rate_30s{function=\"$function\"}" } ]
@@ -46,7 +46,7 @@
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 9, "y": 0, "w": 5, "h": 6 },
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 6 },
       "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [ { "refId": "A", "expr": "kfn:function:latency_p95{function=\"$function\"}" } ]
@@ -57,7 +57,7 @@
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 14, "y": 0, "w": 5, "h": 6 },
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 6 },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit", "min": 0, "max": 1,
@@ -73,10 +73,25 @@
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 19, "y": 0, "w": 5, "h": 6 },
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 6 },
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [ { "refId": "A", "expr": "kfn:function:replicas{function=\"$function\"}" } ]
+    },
+    {
+      "id": 13,
+      "title": "Data freshness (up)",
+      "description": "Is Prometheus scraping this function right now? LIVE (1) = green, DOWN (0/absent) = red. The trust backbone — every other panel is only as good as this. From `up` joined to the function via kfn:pod:function.",
+      "type": "stat",
+      "interval": "10s",
+      "datasource": { "type": "prometheus", "uid": "$datasource" },
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 6 },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0,
+        "mappings": [ { "type": "value", "options": { "0": { "text": "DOWN", "color": "red", "index": 0 }, "1": { "text": "LIVE", "color": "green", "index": 1 } } } ],
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
+      }, "overrides": [] },
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value" },
+      "targets": [ { "refId": "A", "expr": "kfn:function:up{function=\"$function\"}" } ]
     },
     {
       "id": 5,
