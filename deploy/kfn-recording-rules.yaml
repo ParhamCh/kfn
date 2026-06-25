@@ -95,3 +95,10 @@ spec:
         # Scraped/serving replicas: one kfn_in_flight_requests series per pod.
         - record: kfn:function:replicas
           expr: count by (function) (kfn_in_flight_requests)
+
+        # --- trust (is the data live?) ---
+        # 1 if Prometheus is scraping the function's pods, 0/absent if down. The trust
+        # backbone: every other kfn:function:* signal is only as good as this. `up` carries
+        # pod but not function, so attach it via the kfn:pod:function map.
+        - record: kfn:function:up
+          expr: max by (function) (up * on (namespace, pod) group_left(function) kfn:pod:function)
