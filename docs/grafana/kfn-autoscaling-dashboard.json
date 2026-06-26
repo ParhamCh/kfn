@@ -55,14 +55,14 @@
     {
       "id": 2,
       "title": "In-flight requests",
-      "description": "Live concurrency right now — sum of kfn_in_flight_requests across the function's pods. A gauge sampled each scrape: accurate for long-lived/blocking requests, but reads ~0 for very fast requests (they finish between scrapes) — use Requests/sec for those. (p95 latency is still on the Latency p95/p99 chart below.)",
+      "description": "Live concurrency right now — sum of kfn_in_flight_requests across the function's pods, queried raw (not via the recording rule, which lags ~10s — too slow for a fast-moving gauge). Accurate for long-lived/blocking requests; reads ~0 for very fast requests that finish between scrapes (use Requests/sec for those). (p95 latency is still on the Latency p95/p99 chart below.)",
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 8, "y": 0, "w": 4, "h": 6 },
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "purple" } }, "overrides": [] },
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
-      "targets": [ { "refId": "A", "expr": "kfn:function:inflight{function=\"$function\"}" } ]
+      "targets": [ { "refId": "A", "expr": "sum(kfn_in_flight_requests{function=\"$function\"})" } ]
     },
     {
       "id": 3,
@@ -118,7 +118,7 @@
         { "matcher": { "id": "byName", "options": "total" }, "properties": [ { "id": "custom.lineWidth", "value": 2 }, { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } } ] }
       ] },
       "targets": [
-        { "refId": "A", "expr": "kfn:function:request_rate_30s{function=\"$function\"}", "legendFormat": "total" },
+        { "refId": "A", "expr": "sum(rate(kfn_requests_total{function=\"$function\"}[30s]))", "legendFormat": "total" },
         { "refId": "B", "expr": "sum by (pod) (rate(kfn_requests_total{function=\"$function\"}[30s]))", "legendFormat": "{{pod}}" }
       ]
     },
