@@ -42,15 +42,15 @@
     },
     {
       "id": 14,
-      "title": "Total requests (in range)",
-      "description": "Requests this function served over the dashboard's selected time range — sum(increase(kfn_requests_total[$__range])). Counter-based and reset-safe (handles pod restarts/scaling); summed across the function's pods. Widen the time picker for a since-deploy total.",
+      "title": "Total requests (all-time)",
+      "description": "Exact cumulative count of requests this function has served — the raw kfn_requests_total counter, summed across pods. Goes up by exactly what you send and holds steady (no window, no estimate, no wobble). Caveat: a pod restart resets its counter to 0, so the sum drops when pods recycle.",
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 4, "y": 0, "w": 4, "h": 6 },
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
       "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value" },
-      "targets": [ { "refId": "A", "expr": "sum(increase(kfn_requests_total{function=\"$function\"}[$__range]))", "instant": true } ]
+      "targets": [ { "refId": "A", "expr": "sum(kfn_requests_total{function=\"$function\"})", "instant": true } ]
     },
     {
       "id": 2,
