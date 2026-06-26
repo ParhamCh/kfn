@@ -54,14 +54,15 @@
     },
     {
       "id": 2,
-      "title": "p95 latency",
+      "title": "In-flight requests",
+      "description": "Live concurrency right now — sum of kfn_in_flight_requests across the function's pods. A gauge sampled each scrape: accurate for long-lived/blocking requests, but reads ~0 for very fast requests (they finish between scrapes) — use Requests/sec for those. (p95 latency is still on the Latency p95/p99 chart below.)",
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 8, "y": 0, "w": 4, "h": 6 },
-      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "purple" } }, "overrides": [] },
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
-      "targets": [ { "refId": "A", "expr": "kfn:function:latency_p95{function=\"$function\"}" } ]
+      "targets": [ { "refId": "A", "expr": "kfn:function:inflight{function=\"$function\"}" } ]
     },
     {
       "id": 3,
