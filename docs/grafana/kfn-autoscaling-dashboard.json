@@ -35,10 +35,22 @@
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 6 },
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 6 },
       "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 2, "color": { "mode": "fixed", "fixedColor": "green" } }, "overrides": [] },
       "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value" },
       "targets": [ { "refId": "A", "expr": "kfn:function:request_rate_30s{function=\"$function\"}" } ]
+    },
+    {
+      "id": 14,
+      "title": "Total requests (in range)",
+      "description": "Requests this function served over the dashboard's selected time range — sum(increase(kfn_requests_total[$__range])). Counter-based and reset-safe (handles pod restarts/scaling); summed across the function's pods. Widen the time picker for a since-deploy total.",
+      "type": "stat",
+      "interval": "10s",
+      "datasource": { "type": "prometheus", "uid": "$datasource" },
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 6 },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value" },
+      "targets": [ { "refId": "A", "expr": "sum(increase(kfn_requests_total{function=\"$function\"}[$__range]))", "instant": true } ]
     },
     {
       "id": 2,
