@@ -92,6 +92,21 @@ spec:
           expr: histogram_quantile(0.99, sum by (function, le) (rate(kfn_request_duration_seconds_bucket[5m])))
 
         # --- scale (the lever's current position) ---
-        # Scraped/serving replicas: one kfn_in_flight_requests series per pod.
+        # Actual replica count from the Deployment status (kube-state-metrics), keyed by
+        # deployment name = function name. Reads a real 0 when scaled to zero — counting
+        # scraped pods (kfn_in_flight_requests) went *absent* at 0 instead, so the dashboard's
+        # lastNotNull clung to the last value. Scoped to the kfn namespace.
         - record: kfn:function:replicas
-          expr: count by (function) (kfn_in_flight_requests)
+          expr: max by (function) (label_replace(kube_deployment_status_replicas{namespace="kfn"}, "function", "$1", "deployment", "(.+)"))
+
+        # --- trust (is the data live?) ---
+        # 1 if Prometheus is scraping the function's pods; a real 0 if the Deployment exists
+        # but no pods are scraped (scaled to 0 / all down); absent only if the Deployment is
+        # gone. The KSM-zero fallback is what makes a scaled-down function read 0 (DOWN)
+        # instead of going absent — otherwise the dashboard clings to the last LIVE value.
+        # `up` carries pod but not function, so attach it via the kfn:pod:function map.
+        - record: kfn:function:up
+          expr: |
+            (max by (function) (up * on (namespace, pod) group_left(function) kfn:pod:function))
+            or
+            (max by (function) (label_replace(kube_deployment_status_replicas{namespace="kfn"}, "function", "$1", "deployment", "(.+)")) * 0)
