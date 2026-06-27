@@ -248,13 +248,57 @@
     },
     {
       "id": 9,
-      "title": "Memory utilization (vs limit)",
+      "title": "Memory usage (bytes)",
+      "description": "Per-pod memory usage (process_resident_memory_bytes, RSS). Dashed reference lines mark the per-pod request (red) and limit (orange). Approaching the limit risks an OOM-kill.",
       "type": "timeseries",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 0, "y": 30, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
-      "targets": [ { "refId": "A", "expr": "kfn:function:memory_utilization{function=\"$function\"}", "legendFormat": "memory / limit" } ]
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": true, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [], "unit": "bytes", "min": 0
+        },
+        "overrides": [
+          { "matcher": { "id": "byFrameRefID", "options": "B" }, "properties": [ { "id": "custom.lineStyle", "value": { "fill": "dash" } }, { "id": "custom.lineWidth", "value": 2 }, { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byFrameRefID", "options": "C" }, "properties": [ { "id": "custom.lineStyle", "value": { "fill": "dash" } }, { "id": "custom.lineWidth", "value": 2 }, { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } } ] }
+        ]
+      },
+      "options": { "legend": { "asTable": true, "calcs": ["lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [
+        { "refId": "A", "expr": "sum by (pod) (process_resident_memory_bytes{function=\"$function\"})", "legendFormat": "{{pod}}" },
+        { "refId": "B", "expr": "max(kube_pod_container_resource_requests{namespace=\"kfn\", resource=\"memory\", container=\"function\"} * on (namespace, pod) group_left(function) kfn:pod:function{function=\"$function\"})", "legendFormat": "requests" },
+        { "refId": "C", "expr": "max(kube_pod_container_resource_limits{namespace=\"kfn\", resource=\"memory\", container=\"function\"} * on (namespace, pod) group_left(function) kfn:pod:function{function=\"$function\"})", "legendFormat": "limits" }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Memory quota",
+      "description": "Per-pod memory usage (RSS) vs request and limit (bytes), with usage-as-%-of-request and usage-as-%-of-limit. Mirrors the kube Compute Resources / Pod 'Memory Quota' table.",
+      "type": "table",
+      "datasource": { "type": "prometheus", "uid": "$datasource" },
+      "gridPos": { "x": 0, "y": 38, "w": 24, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false }, "mappings": [], "unit": "bytes" },
+        "overrides": [ { "matcher": { "id": "byRegexp", "options": "/%/" }, "properties": [ { "id": "unit", "value": "percentunit" } ] } ]
+      },
+      "options": { "cellHeight": "sm", "showHeader": true },
+      "targets": [
+        { "refId": "A", "expr": "sum by (pod) (process_resident_memory_bytes{function=\"$function\"})", "format": "table", "instant": true },
+        { "refId": "B", "expr": "sum by (pod) (kube_pod_container_resource_requests{namespace=\"kfn\", resource=\"memory\", container=\"function\"} * on (namespace, pod) group_left(function) kfn:pod:function{function=\"$function\"})", "format": "table", "instant": true },
+        { "refId": "C", "expr": "sum by (pod) (process_resident_memory_bytes{function=\"$function\"}) / sum by (pod) (kube_pod_container_resource_requests{namespace=\"kfn\", resource=\"memory\", container=\"function\"} * on (namespace, pod) group_left(function) kfn:pod:function{function=\"$function\"})", "format": "table", "instant": true },
+        { "refId": "D", "expr": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"kfn\", resource=\"memory\", container=\"function\"} * on (namespace, pod) group_left(function) kfn:pod:function{function=\"$function\"})", "format": "table", "instant": true },
+        { "refId": "E", "expr": "sum by (pod) (process_resident_memory_bytes{function=\"$function\"}) / sum by (pod) (kube_pod_container_resource_limits{namespace=\"kfn\", resource=\"memory\", container=\"function\"} * on (namespace, pod) group_left(function) kfn:pod:function{function=\"$function\"})", "format": "table", "instant": true }
+      ],
+      "transformations": [
+        { "id": "joinByField", "options": { "byField": "pod", "mode": "outer" } },
+        { "id": "organize", "options": {
+          "excludeByName": { "Time 1": true, "Time 2": true, "Time 3": true, "Time 4": true, "Time 5": true },
+          "indexByName": { "pod": 0, "Value #A": 1, "Value #B": 2, "Value #C": 3, "Value #D": 4, "Value #E": 5 },
+          "renameByName": { "pod": "Pod", "Value #A": "Memory Usage", "Value #B": "Memory Requests", "Value #C": "Memory Requests %", "Value #D": "Memory Limits", "Value #E": "Memory Limits %" }
+        } }
+      ]
     },
     {
       "id": 10,
@@ -262,7 +306,7 @@
       "type": "timeseries",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 12, "y": 38, "w": 12, "h": 8 },
+      "gridPos": { "x": 12, "y": 46, "w": 12, "h": 8 },
       "fieldConfig": { "defaults": { "min": 0 }, "overrides": [
         { "matcher": { "id": "byName", "options": "5xx ratio" }, "properties": [ { "id": "unit", "value": "percentunit" } ] },
         { "matcher": { "id": "byName", "options": "shed 429/s" }, "properties": [ { "id": "unit", "value": "reqps" } ] }
@@ -279,7 +323,7 @@
       "type": "timeseries",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 0, "y": 38, "w": 12, "h": 7 },
+      "gridPos": { "x": 0, "y": 46, "w": 12, "h": 7 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
       "targets": [ { "refId": "A", "expr": "kfn:function:concurrency_saturation{function=\"$function\"}", "legendFormat": "saturation" } ]
     },
@@ -288,7 +332,7 @@
       "title": "Build info",
       "type": "table",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 12, "y": 46, "w": 12, "h": 7 },
+      "gridPos": { "x": 12, "y": 54, "w": 12, "h": 7 },
       "options": { "showHeader": true },
       "targets": [ { "refId": "A", "expr": "kfn_build_info{function=\"$function\"}", "format": "table", "instant": true } ]
     }
