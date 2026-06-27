@@ -144,19 +144,27 @@
     {
       "id": 7,
       "title": "CPU usage (cores)",
-      "description": "Per-pod CPU usage (rate of process_cpu_seconds_total over 1m). Dashed reference lines mark the per-pod limit (yellow) and request (red). Usage pinned at the limit with throttling means the function wants more CPU than allowed — see CPU throttling.",
+      "description": "Per-pod CPU usage (rate of process_cpu_seconds_total over 1m). Dashed reference lines mark the per-pod request (red) and limit (orange), from kube-state-metrics. Usage pinned at the limit with throttling means the function wants more CPU than allowed — see CPU throttling.",
       "type": "timeseries",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 0, "y": 14, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "short", "decimals": 3, "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 1 } }, "overrides": [
-        { "matcher": { "id": "byName", "options": "limit" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "yellow" } }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }, { "id": "custom.fillOpacity", "value": 0 }, { "id": "custom.lineWidth", "value": 2 } ] },
-        { "matcher": { "id": "byName", "options": "request" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }, { "id": "custom.fillOpacity", "value": 0 }, { "id": "custom.lineWidth", "value": 2 } ] }
-      ] },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": true, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [], "unit": "short", "decimals": 3, "min": 0
+        },
+        "overrides": [
+          { "matcher": { "id": "byFrameRefID", "options": "B" }, "properties": [ { "id": "custom.lineStyle", "value": { "fill": "dash" } }, { "id": "custom.lineWidth", "value": 2 }, { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byFrameRefID", "options": "C" }, "properties": [ { "id": "custom.lineStyle", "value": { "fill": "dash" } }, { "id": "custom.lineWidth", "value": 2 }, { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } } ] }
+        ]
+      },
+      "options": { "legend": { "asTable": true, "calcs": ["lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
       "targets": [
         { "refId": "A", "expr": "sum by (pod) (rate(process_cpu_seconds_total{function=\"$function\"}[1m]))", "legendFormat": "{{pod}}" },
-        { "refId": "B", "expr": "max(kube_pod_container_resource_limits{namespace=\"kfn\", resource=\"cpu\", container=\"function\"} * on (namespace, pod) group_left(function) kfn:pod:function{function=\"$function\"})", "legendFormat": "limit" },
-        { "refId": "C", "expr": "max(kube_pod_container_resource_requests{namespace=\"kfn\", resource=\"cpu\", container=\"function\"} * on (namespace, pod) group_left(function) kfn:pod:function{function=\"$function\"})", "legendFormat": "request" }
+        { "refId": "B", "expr": "max(kube_pod_container_resource_requests{namespace=\"kfn\", resource=\"cpu\", container=\"function\"} * on (namespace, pod) group_left(function) kfn:pod:function{function=\"$function\"})", "legendFormat": "requests" },
+        { "refId": "C", "expr": "max(kube_pod_container_resource_limits{namespace=\"kfn\", resource=\"cpu\", container=\"function\"} * on (namespace, pod) group_left(function) kfn:pod:function{function=\"$function\"})", "legendFormat": "limits" }
       ]
     },
     {
@@ -167,7 +175,18 @@
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 12, "y": 14, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "drawStyle": "line", "fillOpacity": 25, "lineWidth": 2, "thresholdsStyle": { "mode": "line" } }, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.25 } ] } }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "thresholds", "axisLabel": "", "axisPlacement": "auto", "axisSoftMax": 1, "axisSoftMin": 0, "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": true, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "dashed+area" } },
+          "mappings": [], "unit": "percentunit",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 0.25 } ] }
+        },
+        "overrides": [
+          { "matcher": { "id": "byFrameRefID", "options": "A" }, "properties": [ { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 0.25 } ] } }, { "id": "color", "value": { "mode": "thresholds", "seriesBy": "lastNotNull" } } ] }
+        ]
+      },
+      "options": { "legend": { "asTable": true, "calcs": ["lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
       "targets": [ { "refId": "A", "expr": "kfn:function:cpu_throttle_ratio{function=\"$function\"}", "legendFormat": "throttle" } ]
     },
     {
