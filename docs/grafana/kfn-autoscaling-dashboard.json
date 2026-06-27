@@ -30,12 +30,12 @@
   "panels": [
     {
       "id": 1,
-      "title": "Requests / sec",
+      "title": "RPS",
       "description": "The primary signal: rate(kfn_requests_total[30s]) summed over replicas. Counter-based, so it never drops a request, fast or slow. It is a per-second average over the 30s window — one isolated request reads 1/30 ≈ 0.03, not 1; sustain N/sec to read N.",
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 6 },
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 6 },
       "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 2, "color": { "mode": "fixed", "fixedColor": "green" } }, "overrides": [] },
       "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value" },
       "targets": [ { "refId": "A", "expr": "kfn:function:request_rate_30s{function=\"$function\"}" } ]
@@ -47,7 +47,7 @@
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 12, "y": 30, "w": 12, "h": 4 },
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 6 },
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
       "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value" },
       "targets": [ { "refId": "A", "expr": "sum(kfn_requests_total{function=\"$function\"})", "instant": true } ]
@@ -59,7 +59,7 @@
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 6 },
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 6 },
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "purple" } }, "overrides": [] },
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [ { "refId": "A", "expr": "sum(kfn_in_flight_requests{function=\"$function\"})" } ]
@@ -67,7 +67,23 @@
     {
       "id": 3,
       "title": "CPU utilization (vs limit)",
-      "type": "stat",
+      "type": "gauge",
+      "interval": "10s",
+      "datasource": { "type": "prometheus", "uid": "$datasource" },
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 6 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit", "min": 0, "max": 1,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.7 }, { "color": "red", "value": 0.85 } ] }
+        }, "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "showThresholdLabels": false, "showThresholdMarkers": true },
+      "targets": [ { "refId": "A", "expr": "kfn:function:cpu_utilization{function=\"$function\"}" } ]
+    },
+    {
+      "id": 18,
+      "title": "RAM utilization (vs limit)",
+      "type": "gauge",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 8, "y": 0, "w": 4, "h": 6 },
@@ -77,23 +93,7 @@
           "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.7 }, { "color": "red", "value": 0.85 } ] }
         }, "overrides": []
       },
-      "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
-      "targets": [ { "refId": "A", "expr": "kfn:function:cpu_utilization{function=\"$function\"}" } ]
-    },
-    {
-      "id": 18,
-      "title": "RAM utilization (vs limit)",
-      "type": "stat",
-      "interval": "10s",
-      "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 6 },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit", "min": 0, "max": 1,
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.7 }, { "color": "red", "value": 0.85 } ] }
-        }, "overrides": []
-      },
-      "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "showThresholdLabels": false, "showThresholdMarkers": true },
       "targets": [ { "refId": "A", "expr": "kfn:function:memory_utilization{function=\"$function\"}" } ]
     },
     {
@@ -102,19 +102,19 @@
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 6 },
+      "gridPos": { "x": 0, "y": 3, "w": 4, "h": 3 },
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
-      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [ { "refId": "A", "expr": "kfn:function:replicas{function=\"$function\"}" } ]
     },
     {
       "id": 13,
-      "title": "Data freshness (up)",
+      "title": "Status",
       "description": "Is Prometheus scraping this function right now? LIVE (1) = green, DOWN (0/absent) = red. The trust backbone — every other panel is only as good as this. From `up` joined to the function via kfn:pod:function.",
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 6 },
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 3 },
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0,
         "mappings": [ { "type": "value", "options": { "0": { "text": "DOWN", "color": "red", "index": 0 }, "1": { "text": "LIVE", "color": "green", "index": 1 } } } ],
         "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
@@ -308,7 +308,7 @@
       "title": "Build info",
       "type": "table",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 12, "y": 34, "w": 12, "h": 4 },
+      "gridPos": { "x": 12, "y": 30, "w": 12, "h": 8 },
       "options": { "showHeader": true },
       "targets": [ { "refId": "A", "expr": "kfn_build_info{function=\"$function\"}", "format": "table", "instant": true } ]
     }
