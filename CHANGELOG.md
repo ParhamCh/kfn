@@ -6,6 +6,43 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-06-27
+
+**Dashboard hardening** — every signal validated against ground truth with live load, plus
+several new panels, all in the Kubernetes / Compute Resources visual style. Recording rules
+and dashboard only; no runtime/CLI/API change.
+
+### Added
+- **Data freshness (up)** trust panel + `kfn:function:up` recording rule — LIVE/DOWN per
+  function (`up` joined to the function via `kfn:pod:function`). The trust backbone: every
+  other panel is only as good as this.
+- **Total requests (all-time)** stat — the exact cumulative `kfn_requests_total` counter
+  (rises by exactly what you send, holds steady; resets on pod restart).
+- **In-flight requests** stat — live concurrency (`kfn_in_flight_requests`), replacing the
+  p95 stat (p95 stays on the latency chart).
+- **CPU usage** and **CPU throttling** charts, split from the old combined panel: per-pod
+  usage with request (red dashed) / limit (orange dashed) reference lines; throttling shaded
+  green ≤25% / red >25%.
+- **CPU quota** table — per-pod CPU usage, request, request %, limit, limit %.
+
+### Changed
+- `kfn:function:replicas` now comes from kube-state-metrics deployment replicas (reads a real
+  `0` when scaled to zero — a truer current-scale signal) instead of counting scraped pods.
+- RPS charts restyled to the kube-mixin look (palette, table legend, soft fill).
+- The dashboard reads **raw** metrics for fast-moving signals (in-flight, per-replica total)
+  to avoid the ~10s recording-rule evaluation lag; the recording rules remain the
+  autoscaler's canonical source.
+
+### Fixed
+- Replicas / Data-freshness no longer cling to the last value when a function is scaled to 0
+  — they read a real `0` (DOWN) via kube-state-metrics, instead of going absent and leaving
+  Grafana's `lastNotNull` stuck on the previous value.
+- In-flight stat no longer reads `0` with more than one replica (it was reading the lagged
+  recording rule; now raw).
+- Per-replica chart's "total" line now overlays the summed per-pod lines exactly (was a
+  lagged recording-rule line with a different shape).
+- "Total requests" is the exact raw counter, not a wobbling `increase()` window estimate.
+
 ## [1.0.1] - 2026-06-25
 
 **Trustworthy, real-time RPS monitoring.** Requests/sec (`kfn_requests_total`) is the
