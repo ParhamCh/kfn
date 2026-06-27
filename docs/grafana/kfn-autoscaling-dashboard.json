@@ -70,7 +70,7 @@
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 6 },
+      "gridPos": { "x": 12, "y": 0, "w": 3, "h": 6 },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit", "min": 0, "max": 1,
@@ -81,12 +81,28 @@
       "targets": [ { "refId": "A", "expr": "kfn:function:cpu_utilization{function=\"$function\"}" } ]
     },
     {
+      "id": 18,
+      "title": "RAM utilization (vs limit)",
+      "type": "stat",
+      "interval": "10s",
+      "datasource": { "type": "prometheus", "uid": "$datasource" },
+      "gridPos": { "x": 15, "y": 0, "w": 3, "h": 6 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit", "min": 0, "max": 1,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.7 }, { "color": "red", "value": 0.85 } ] }
+        }, "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "refId": "A", "expr": "kfn:function:memory_utilization{function=\"$function\"}" } ]
+    },
+    {
       "id": 4,
       "title": "Replicas",
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 6 },
+      "gridPos": { "x": 18, "y": 0, "w": 3, "h": 6 },
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [ { "refId": "A", "expr": "kfn:function:replicas{function=\"$function\"}" } ]
@@ -98,7 +114,7 @@
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 6 },
+      "gridPos": { "x": 21, "y": 0, "w": 3, "h": 6 },
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0,
         "mappings": [ { "type": "value", "options": { "0": { "text": "DOWN", "color": "red", "index": 0 }, "1": { "text": "LIVE", "color": "green", "index": 1 } } } ],
         "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
@@ -234,19 +250,6 @@
       ]
     },
     {
-      "id": 8,
-      "title": "Latency p95 / p99",
-      "type": "timeseries",
-      "interval": "10s",
-      "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 12, "y": 30, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "s", "min": 0 }, "overrides": [] },
-      "targets": [
-        { "refId": "A", "expr": "kfn:function:latency_p95{function=\"$function\"}", "legendFormat": "p95" },
-        { "refId": "B", "expr": "kfn:function:latency_p99{function=\"$function\"}", "legendFormat": "p99" }
-      ]
-    },
-    {
       "id": 9,
       "title": "Memory usage (bytes)",
       "description": "Per-pod memory usage (process_resident_memory_bytes, RSS). Dashed reference lines mark the per-pod request (red) and limit (orange). Approaching the limit risks an OOM-kill.",
@@ -301,38 +304,11 @@
       ]
     },
     {
-      "id": 10,
-      "title": "Errors & shedding",
-      "type": "timeseries",
-      "interval": "10s",
-      "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 12, "y": 46, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "min": 0 }, "overrides": [
-        { "matcher": { "id": "byName", "options": "5xx ratio" }, "properties": [ { "id": "unit", "value": "percentunit" } ] },
-        { "matcher": { "id": "byName", "options": "shed 429/s" }, "properties": [ { "id": "unit", "value": "reqps" } ] }
-      ] },
-      "targets": [
-        { "refId": "A", "expr": "kfn:function:error_ratio{function=\"$function\"}", "legendFormat": "5xx ratio" },
-        { "refId": "B", "expr": "kfn:function:shed_rate{function=\"$function\"}", "legendFormat": "shed 429/s" }
-      ]
-    },
-    {
-      "id": 11,
-      "title": "Concurrency saturation — long-lived requests only",
-      "description": "Gauge-based (in-flight / capacity). Meaningful for blocking workloads like sleep; for fast requests the in-flight gauge reads ~0 between scrapes, so use Requests/sec instead. Only appears for functions with MAX_CONCURRENCY set.",
-      "type": "timeseries",
-      "interval": "10s",
-      "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 0, "y": 46, "w": 12, "h": 7 },
-      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
-      "targets": [ { "refId": "A", "expr": "kfn:function:concurrency_saturation{function=\"$function\"}", "legendFormat": "saturation" } ]
-    },
-    {
       "id": 12,
       "title": "Build info",
       "type": "table",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 12, "y": 54, "w": 12, "h": 7 },
+      "gridPos": { "x": 12, "y": 30, "w": 12, "h": 8 },
       "options": { "showHeader": true },
       "targets": [ { "refId": "A", "expr": "kfn_build_info{function=\"$function\"}", "format": "table", "instant": true } ]
     }
