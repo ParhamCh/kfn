@@ -47,7 +47,7 @@
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 6 },
+      "gridPos": { "x": 12, "y": 30, "w": 12, "h": 4 },
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
       "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value" },
       "targets": [ { "refId": "A", "expr": "sum(kfn_requests_total{function=\"$function\"})", "instant": true } ]
@@ -59,7 +59,7 @@
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 6 },
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 6 },
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "purple" } }, "overrides": [] },
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [ { "refId": "A", "expr": "sum(kfn_in_flight_requests{function=\"$function\"})" } ]
@@ -70,7 +70,7 @@
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 12, "y": 0, "w": 3, "h": 6 },
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 6 },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit", "min": 0, "max": 1,
@@ -86,7 +86,7 @@
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 15, "y": 0, "w": 3, "h": 6 },
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 6 },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit", "min": 0, "max": 1,
@@ -102,7 +102,7 @@
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 18, "y": 0, "w": 3, "h": 6 },
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 6 },
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [ { "refId": "A", "expr": "kfn:function:replicas{function=\"$function\"}" } ]
@@ -114,7 +114,7 @@
       "type": "stat",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 21, "y": 0, "w": 3, "h": 6 },
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 6 },
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0,
         "mappings": [ { "type": "value", "options": { "0": { "text": "DOWN", "color": "red", "index": 0 }, "1": { "text": "LIVE", "color": "green", "index": 1 } } } ],
         "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
@@ -308,7 +308,7 @@
       "title": "Build info",
       "type": "table",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 12, "y": 30, "w": 12, "h": 8 },
+      "gridPos": { "x": 12, "y": 34, "w": 12, "h": 4 },
       "options": { "showHeader": true },
       "targets": [ { "refId": "A", "expr": "kfn_build_info{function=\"$function\"}", "format": "table", "instant": true } ]
     }
