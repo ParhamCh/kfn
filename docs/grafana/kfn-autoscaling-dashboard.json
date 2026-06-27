@@ -143,17 +143,32 @@
     },
     {
       "id": 7,
-      "title": "CPU — cores vs limit",
+      "title": "CPU usage (cores)",
+      "description": "Per-pod CPU usage (rate of process_cpu_seconds_total over 1m). Dashed reference lines mark the per-pod limit (yellow) and request (red). Usage pinned at the limit with throttling means the function wants more CPU than allowed — see CPU throttling.",
       "type": "timeseries",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "gridPos": { "x": 0, "y": 14, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "short", "decimals": 3, "min": 0 }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 3, "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 1 } }, "overrides": [
+        { "matcher": { "id": "byName", "options": "limit" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "yellow" } }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }, { "id": "custom.fillOpacity", "value": 0 }, { "id": "custom.lineWidth", "value": 2 } ] },
+        { "matcher": { "id": "byName", "options": "request" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }, { "id": "custom.fillOpacity", "value": 0 }, { "id": "custom.lineWidth", "value": 2 } ] }
+      ] },
       "targets": [
-        { "refId": "A", "expr": "kfn:function:cpu_cores{function=\"$function\"}", "legendFormat": "cores used" },
-        { "refId": "B", "expr": "kfn:function:cpu_limit_cores{function=\"$function\"}", "legendFormat": "limit" },
-        { "refId": "C", "expr": "kfn:function:cpu_throttle_ratio{function=\"$function\"}", "legendFormat": "throttle ratio" }
+        { "refId": "A", "expr": "sum by (pod) (rate(process_cpu_seconds_total{function=\"$function\"}[1m]))", "legendFormat": "{{pod}}" },
+        { "refId": "B", "expr": "max(kube_pod_container_resource_limits{namespace=\"kfn\", resource=\"cpu\", container=\"function\"} * on (namespace, pod) group_left(function) kfn:pod:function{function=\"$function\"})", "legendFormat": "limit" },
+        { "refId": "C", "expr": "max(kube_pod_container_resource_requests{namespace=\"kfn\", resource=\"cpu\", container=\"function\"} * on (namespace, pod) group_left(function) kfn:pod:function{function=\"$function\"})", "legendFormat": "request" }
       ]
+    },
+    {
+      "id": 15,
+      "title": "CPU throttling",
+      "description": "Fraction of CFS scheduler periods the container was throttled (rate over 1m). Green up to 25%, red above — sustained throttling over ~25% means the function wants more CPU than its limit allows (scale up or raise the limit).",
+      "type": "timeseries",
+      "interval": "10s",
+      "datasource": { "type": "prometheus", "uid": "$datasource" },
+      "gridPos": { "x": 12, "y": 14, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "drawStyle": "line", "fillOpacity": 25, "lineWidth": 2, "thresholdsStyle": { "mode": "line" } }, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.25 } ] } }, "overrides": [] },
+      "targets": [ { "refId": "A", "expr": "kfn:function:cpu_throttle_ratio{function=\"$function\"}", "legendFormat": "throttle" } ]
     },
     {
       "id": 8,
@@ -161,7 +176,7 @@
       "type": "timeseries",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 12, "y": 14, "w": 12, "h": 8 },
+      "gridPos": { "x": 12, "y": 22, "w": 12, "h": 8 },
       "fieldConfig": { "defaults": { "unit": "s", "min": 0 }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "kfn:function:latency_p95{function=\"$function\"}", "legendFormat": "p95" },
@@ -184,7 +199,7 @@
       "type": "timeseries",
       "interval": "10s",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 12, "y": 22, "w": 12, "h": 8 },
+      "gridPos": { "x": 12, "y": 30, "w": 12, "h": 8 },
       "fieldConfig": { "defaults": { "min": 0 }, "overrides": [
         { "matcher": { "id": "byName", "options": "5xx ratio" }, "properties": [ { "id": "unit", "value": "percentunit" } ] },
         { "matcher": { "id": "byName", "options": "shed 429/s" }, "properties": [ { "id": "unit", "value": "reqps" } ] }
@@ -210,7 +225,7 @@
       "title": "Build info",
       "type": "table",
       "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "gridPos": { "x": 12, "y": 30, "w": 12, "h": 7 },
+      "gridPos": { "x": 12, "y": 38, "w": 12, "h": 7 },
       "options": { "showHeader": true },
       "targets": [ { "refId": "A", "expr": "kfn_build_info{function=\"$function\"}", "format": "table", "instant": true } ]
     }
